@@ -12,7 +12,6 @@ if (!appId && !appSlug) {
 }
 
 async function init() {
-  // 1. получаем приложение БЕЗ join
   let query = supabase.from('apps').select('*');
 
   if (appId) {
@@ -38,7 +37,6 @@ async function init() {
     return;
   }
 
-  // 2. категории отдельно
   const { data: catLinks } = await supabase
     .from('app_categories')
     .select('category_id, categories ( name )')
@@ -48,7 +46,6 @@ async function init() {
     .map(ac => ac.categories?.name)
     .filter(Boolean);
 
-  // 3. автор отдельно
   let authorSlug = null;
   let authorName = app.author;
 
