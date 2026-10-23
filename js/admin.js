@@ -7,7 +7,6 @@ const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-// ===== ЛОГИН =====
 const loginScreen = document.getElementById('loginScreen');
 const adminScreen = document.getElementById('adminScreen');
 const loginBtn = document.getElementById('loginBtn');
@@ -34,7 +33,6 @@ function showAdmin() {
 
 if (sessionStorage.getItem('admin') === '1') showAdmin();
 
-// ===== ВКЛАДКИ =====
 const tabs = document.querySelectorAll('.admin-tab');
 const tabIds = ['add', 'apps', 'reviews', 'categories', 'profiles'];
 tabs.forEach(tab => {
@@ -47,14 +45,12 @@ tabs.forEach(tab => {
   });
 });
 
-// ===== КАТЕГОРИИ =====
 let categoriesCache = [];
 
 async function loadCategories() {
   const { data } = await admin.from('categories').select('*').order('sort_order');
   categoriesCache = data || [];
 
-  // чекбоксы в форме добавления
   const cbBox = document.getElementById('categoryCheckboxes');
   cbBox.innerHTML = categoriesCache.map(c => `
     <label class="checkbox-row" style="width:auto;padding:6px 12px">
@@ -63,7 +59,6 @@ async function loadCategories() {
     </label>
   `).join('');
 
-  // список в вкладке "Категории"
   const listBox = document.getElementById('catsList');
   listBox.innerHTML = categoriesCache.length
     ? categoriesCache.map(c => `
@@ -98,14 +93,12 @@ document.getElementById('catForm').addEventListener('submit', async (e) => {
   else { e.target.reset(); loadCategories(); }
 });
 
-// ===== ПРОФИЛИ =====
 let profilesCache = [];
 
 async function loadProfiles() {
   const { data } = await admin.from('profiles').select('*').order('created_at', { ascending: false });
   profilesCache = data || [];
 
-  // селект в форме добавления приложения
   const sel = document.getElementById('authorProfileSelect');
   sel.innerHTML = '<option value="">— без профиля —</option>' +
     profilesCache.map(p => `<option value="${p.id}">${esc(p.display_name)} (@${esc(p.slug)})</option>`).join('');
@@ -117,7 +110,7 @@ async function loadProfiles() {
         <img src="${p.avatar_url || ''}" alt="">
         <div class="grow">
           <h4>${esc(p.display_name)}</h4>
-          <small>@${esc(p.slug)} · ${p.account_id ? 'зарегистрирован' : 'создан вручную'} · <a href="profile.html?id=${p.id}" target="_blank">открыть</a></small>
+          <small>@${esc(p.slug)} · ${p.account_id ? 'зарегистрирован' : 'создан вручную'} · <a href="profile.html?u=${p.slug}" target="_blank">открыть</a></small>
         </div>
         <div class="actions">
           <button class="btn btn-danger btn-sm" data-del-profile="${p.id}">Удалить</button>
@@ -135,33 +128,6 @@ async function loadProfiles() {
   });
 }
 
-document.getElementById('profileForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const statusEl = document.getElementById('profileStatus');
-  statusEl.textContent = 'Создание…';
-  statusEl.style.color = 'var(--muted)';
-
-  const { error } = await admin.from('profiles').insert({
-    display_name: fd.get('display_name'),
-    slug: fd.get('slug').toLowerCase(),
-    avatar_url: fd.get('avatar_url') || null,
-    bio: fd.get('bio') || null,
-    links: fd.get('links') || null,
-  });
-
-  if (error) {
-    statusEl.textContent = 'Ошибка: ' + error.message;
-    statusEl.style.color = 'var(--danger)';
-  } else {
-    statusEl.textContent = 'Профиль создан!';
-    statusEl.style.color = 'var(--success)';
-    e.target.reset();
-    loadProfiles();
-  }
-});
-
-// ===== ПРИЛОЖЕНИЯ =====
 async function loadApps() {
   const box = document.getElementById('appsList');
   const { data } = await admin
@@ -184,7 +150,7 @@ async function loadApps() {
           <small>${esc(app.author)} · ${cats.join(', ') || '—'} · ${app.downloads} ↓ · ${formatSize(app.size_bytes)}</small>
         </div>
         <div class="actions">
-          <a href="app.html?id=${app.id}" target="_blank" class="btn btn-ghost btn-sm">Открыть</a>
+          <a href="app.html?slug=${app.slug || app.id}" target="_blank" class="btn btn-ghost btn-sm">Открыть</a>
           <button class="btn btn-danger btn-sm" data-del="${app.id}">Удалить</button>
         </div>
       </div>
@@ -200,7 +166,6 @@ async function loadApps() {
   });
 }
 
-// ===== ДОБАВЛЕНИЕ =====
 document.getElementById('addForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);
@@ -224,6 +189,7 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
 
   const { data: inserted, error } = await admin.from('apps').insert({
     name: fd.get('name'),
+    slug: fd.get('slug').toLowerCase(),
     author: fd.get('author'),
     author_profile_id: fd.get('author_profile_id') || null,
     description: fd.get('description'),
@@ -244,7 +210,6 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
     return;
   }
 
-  // связи с категориями
   const links = selectedCats.map(catId => ({ app_id: inserted.id, category_id: catId }));
   const { error: linkErr } = await admin.from('app_categories').insert(links);
 
@@ -259,7 +224,6 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
   }
 });
 
-// ===== ОТЗЫВЫ =====
 async function loadReviews() {
   const box = document.getElementById('reviewsList');
   const { data } = await admin
