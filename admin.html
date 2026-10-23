@@ -28,7 +28,6 @@
   </header>
 
   <main class="container">
-    <!-- Логин -->
     <div id="loginScreen" class="login-wrap">
       <h1>Консоль</h1>
       <div class="form-group">
@@ -41,7 +40,6 @@
       </p>
     </div>
 
-    <!-- Админка -->
     <div id="adminScreen" class="hidden" style="padding-bottom:64px">
       <div class="page-header">
         <h1>Консоль</h1>
@@ -56,7 +54,6 @@
         <button class="admin-tab" data-tab="profiles">Авторы</button>
       </div>
 
-      <!-- ===== ДОБАВИТЬ ===== -->
       <div id="tab-add">
         <form id="addForm" style="max-width:720px">
           <div class="form-row">
@@ -68,6 +65,12 @@
               <label>Версия</label>
               <input type="text" name="version" placeholder="1.0.0">
             </div>
+          </div>
+
+          <div class="form-group">
+            <label>Slug (для ссылки) *</label>
+            <input type="text" name="slug" required pattern="[a-z0-9-]{2,40}" placeholder="my-app">
+            <div class="hint">Только латиница, цифры и дефис. Например: super-game</div>
           </div>
 
           <div class="form-row">
@@ -88,11 +91,6 @@
             <label>Категории (можно несколько) *</label>
             <div id="categoryCheckboxes" class="tag-list"></div>
             <div class="hint">Отметьте хотя бы одну</div>
-          </div>
-          <div class="form-group">
-            <label>Slug (для ссылки) *</label>
-            <input type="text" name="slug" required pattern="[a-z0-9-]{2,40}" placeholder="my-app">
-          <div class="hint">Только латиница, цифры и дефис. Например: super-game</div>
           </div>
 
           <div class="form-row">
@@ -160,17 +158,14 @@
         </form>
       </div>
 
-      <!-- ===== ПРИЛОЖЕНИЯ ===== -->
       <div id="tab-apps" class="hidden">
         <div id="appsList"><div class="empty">Загрузка…</div></div>
       </div>
 
-      <!-- ===== ОТЗЫВЫ ===== -->
       <div id="tab-reviews" class="hidden">
         <div id="reviewsList"><div class="empty">Загрузка…</div></div>
       </div>
 
-      <!-- ===== КАТЕГОРИИ ===== -->
       <div id="tab-categories" class="hidden" style="max-width:520px">
         <form id="catForm" style="display:flex;gap:10px;margin-bottom:20px">
           <input type="text" name="name" placeholder="Название категории" required>
@@ -179,36 +174,8 @@
         <div id="catsList"></div>
       </div>
 
-      <!-- ===== АВТОРЫ ===== -->
       <div id="tab-profiles" class="hidden" style="max-width:720px">
-        <form id="profileForm">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Имя автора *</label>
-              <input type="text" name="display_name" required>
-            </div>
-            <div class="form-group">
-              <label>Slug (латиница, без пробелов) *</label>
-              <input type="text" name="slug" required pattern="[a-z0-9-]+" placeholder="my-nick">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Ссылка на аватар</label>
-            <input type="url" name="avatar_url" placeholder="https://...">
-          </div>
-          <div class="form-group">
-            <label>Био</label>
-            <textarea name="bio" placeholder="Пара слов об авторе"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Ссылки (одна на строку)</label>
-            <textarea name="links" placeholder="https://t.me/...&#10;https://github.com/..."></textarea>
-          </div>
-          <button type="submit" class="btn">Создать профиль</button>
-          <p id="profileStatus" style="margin-top:10px;font-size:13px"></p>
-        </form>
-
-        <div class="section-title" style="margin-top:32px">Все авторы</div>
+        <div class="section-title">Все авторы</div>
         <div id="profilesList"></div>
       </div>
     </div>
