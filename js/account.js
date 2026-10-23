@@ -28,6 +28,40 @@ async function init() {
   if (error || !profile) {
     content.innerHTML = '<div class="empty">Профиль не найден</div>';
     return;
+
+const passForm = document.getElementById('passwordForm');
+if (passForm) {
+  passForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const statusEl = document.getElementById('passStatus');
+
+    if (fd.get('new1') !== fd.get('new2')) {
+      statusEl.textContent = 'Новые пароли не совпадают';
+      statusEl.style.color = 'var(--danger)';
+      return;
+    }
+
+    statusEl.textContent = 'Смена…';
+    statusEl.style.color = 'var(--muted)';
+
+    const { data, error } = await supabase.rpc('change_password', {
+      p_account_id: session.account_id,
+      p_current_password: fd.get('current'),
+      p_new_password: fd.get('new1'),
+    });
+
+    if (error || data.error) {
+      statusEl.textContent = 'Ошибка: ' + (error?.message || data.error);
+      statusEl.style.color = 'var(--danger)';
+      return;
+    }
+
+    statusEl.textContent = 'Пароль изменён!';
+    statusEl.style.color = 'var(--success)';
+    passForm.reset();
+  });
+}
   }
 
   const { data: apps } = await supabase
