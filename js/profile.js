@@ -1,14 +1,24 @@
 import { supabase, formatSize, esc } from './config.js';
 
 const content = document.getElementById('content');
-const id = new URLSearchParams(location.search).get('id');
+const params = new URLSearchParams(location.search);
+const profileId = params.get('id');
+const profileSlug = params.get('u');
 
-if (!id) content.innerHTML = '<div class="empty">Профиль не найден</div>';
-else init();
+if (!profileId && !profileSlug) {
+  content.innerHTML = '<div class="empty">Профиль не найден</div>';
+} else {
+  init();
+}
 
 async function init() {
-  const { data: profile, error } = await supabase
-    .from('profiles').select('*').eq('id', id).single();
+  let query = supabase.from('profiles').select('*');
+  if (profileSlug) {
+    query = query.eq('slug', profileSlug);
+  } else {
+    query = query.eq('id', profileId);
+  }
+  const { data: profile, error } = await query.single();
 
   if (error || !profile) {
     content.innerHTML = '<div class="empty">Профиль не найден</div>';
@@ -18,8 +28,8 @@ async function init() {
   document.title = profile.display_name + ' — Morozhka Apps';
 
   const { data: apps } = await supabase
-    .from('apps').select('id, name, icon_url, size_bytes, downloads, version')
-    .eq('author_profile_id', id)
+    .from('apps').select('id, name, slug, icon_url, size_bytes, downloads, version')
+    .eq('author_profile_id', profile.id)
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
@@ -37,7 +47,7 @@ async function init() {
     <div class="section-title">Приложения автора · ${apps?.length || 0}</div>
     <div class="apps-grid">
       ${(apps && apps.length) ? apps.map(a => `
-        <a href="app.html?id=${a.id}" class="app-card">
+        <a href="app.html?slug=${a.slug || a.id}" class="app-card">
           <img class="icon" src="${a.icon_url || ''}" alt="">
           <div class="body">
             <h3>${esc(a.name)}</h3>
