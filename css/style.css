@@ -1,10 +1,10 @@
-html { scroll-behavior: smooth; }
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+html { scroll-behavior: smooth; scrollbar-gutter: stable; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* серо-голубая палитра */
   --bg:        #0F141B;
   --surface:   #161D27;
   --surface-2: #1C2530;
@@ -43,7 +43,6 @@ h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; let
 
 .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; width: 100%; }
 
-/* ============= ШАПКА ============= */
 header {
   border-bottom: 1px solid var(--border);
   background: var(--bg);
@@ -72,11 +71,11 @@ nav { display: flex; gap: 4px; }
 nav a {
   padding: 8px 12px; border-radius: 4px;
   color: var(--muted); font-size: 13.5px; font-weight: 500;
+  min-width: 84px; text-align: center; display: inline-block;
 }
 nav a:hover { color: var(--text); background: var(--surface); }
 nav a.active { color: var(--text); background: var(--surface); }
 
-/* ============= ГЛАВНАЯ ============= */
 .hero {
   flex: 1;
   display: flex; flex-direction: column; align-items: center;
@@ -86,7 +85,6 @@ nav a.active { color: var(--text); background: var(--surface); }
   overflow: hidden;
 }
 .hero::before {
-  /* тонкая сетка на фоне — визуальная «фактура», не ИИ-градиент */
   content: ''; position: absolute; inset: 0;
   background-image:
     linear-gradient(var(--border) 1px, transparent 1px),
@@ -183,7 +181,6 @@ nav a.active { color: var(--text); background: var(--surface); }
 }
 .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ============= FOOTER ============= */
 footer {
   border-top: 1px solid var(--border);
   padding: 24px 0;
@@ -192,7 +189,6 @@ footer {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* ============= КАТАЛОГ ============= */
 .page-header {
   padding: 40px 0 24px;
   border-bottom: 1px solid var(--border);
@@ -223,6 +219,7 @@ footer {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
   margin-bottom: 64px;
+  align-items: stretch;
 }
 
 .app-card {
@@ -233,6 +230,8 @@ footer {
   display: flex; gap: 14px;
   color: var(--text);
   transition: border-color 0.12s, background 0.12s;
+  min-height: 88px;
+  height: 100%;
 }
 .app-card:hover { border-color: var(--border-2); background: var(--surface-2); color: var(--text); }
 .app-card .icon {
@@ -267,7 +266,6 @@ footer {
   font-size: 14px;
 }
 
-/* ============= СТРАНИЦА ПРИЛОЖЕНИЯ ============= */
 .app-detail {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -379,7 +377,6 @@ footer {
 }
 .download-meta div { display: flex; justify-content: space-between; }
 
-/* ============= ОТЗЫВЫ ============= */
 .review {
   padding: 16px 0;
   border-bottom: 1px solid var(--border);
@@ -404,7 +401,6 @@ footer {
   border-top: 1px solid var(--border);
 }
 
-/* ============= ФОРМЫ ============= */
 input, select, textarea {
   width: 100%;
   padding: 10px 12px;
@@ -438,7 +434,6 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .checkbox-row input { width: auto; }
 
-/* ============= КНОПКИ ============= */
 .btn {
   padding: 9px 18px;
   background: var(--accent); color: white;
@@ -464,7 +459,6 @@ textarea { resize: vertical; min-height: 80px; }
 
 .btn-sm { padding: 6px 12px; font-size: 12.5px; }
 
-/* ============= АДМИНКА ============= */
 .login-wrap {
   max-width: 380px; margin: 100px auto;
   background: var(--surface); border: 1px solid var(--border);
@@ -521,7 +515,6 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .tag-item button:hover { color: var(--danger); }
 
-/* ============= ВСТРОЕННЫЕ СТРАНИЦЫ ============= */
 .embed-wrap {
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--surface); overflow: hidden;
@@ -544,7 +537,6 @@ textarea { resize: vertical; min-height: 80px; }
   background: white;
 }
 
-/* ============= ПРОФИЛЬ ============= */
 .profile-header {
   display: flex; gap: 24px; align-items: center;
   padding: 40px 0 32px;
@@ -563,6 +555,8 @@ textarea { resize: vertical; min-height: 80px; }
   color: var(--muted); font-size: 13px;
   margin-bottom: 10px;
 }
+.profile-header .bio { color: var(--muted); font-size: 14px; max-width: 600px; }
+
 .back-to-top {
   position: fixed;
   bottom: 20px;
@@ -582,6 +576,7 @@ textarea { resize: vertical; min-height: 80px; }
   z-index: 100;
 }
 .back-to-top.visible { display: flex; }
-.profile-header .bio { color: var(--muted); font-size: 14px; max-width: 600px; }
+
+#content, main { min-height: 400px; }
 
 .hidden { display: none !important; }
