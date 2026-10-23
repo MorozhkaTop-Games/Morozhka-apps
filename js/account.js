@@ -31,14 +31,14 @@ async function init() {
   }
 
   const { data: apps } = await supabase
-    .from('apps').select('id, name, icon_url, size_bytes, downloads, version, status')
+    .from('apps').select('id, name, slug, icon_url, size_bytes, downloads, version, status')
     .eq('author_profile_id', profile.id)
     .order('created_at', { ascending: false });
 
   content.innerHTML = `
     <div class="page-header">
       <h1>Мой профиль</h1>
-      <p><a href="profile.html?id=${profile.id}" style="color:var(--accent)">Публичная страница</a> · <a href="#" id="logoutBtn" style="color:var(--danger)">Выйти</a></p>
+      <p><a href="profile.html?u=${profile.slug}" style="color:var(--accent)">Публичная страница</a> · <a href="#" id="logoutBtn" style="color:var(--danger)">Выйти</a></p>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 320px;gap:40px">
@@ -110,7 +110,7 @@ async function init() {
               <h4>${esc(a.name)}</h4>
               <small>${formatSize(a.size_bytes)} · ${a.downloads} ↓ ${a.status === 'hidden' ? '· скрыто' : ''}</small>
             </div>
-            ${a.status === 'published' ? `<a href="app.html?id=${a.id}" class="btn btn-ghost btn-sm" target="_blank">Открыть</a>` : ''}
+            ${a.status === 'published' ? `<a href="app.html?slug=${a.slug || a.id}" class="btn btn-ghost btn-sm" target="_blank">Открыть</a>` : ''}
           </div>
         `).join('') : '<div class="empty" style="padding:20px;font-size:13px">Приложений пока нет</div>'}
 
@@ -127,7 +127,6 @@ async function init() {
     location.href = 'index.html';
   });
 
-  // сохранение профиля
   document.getElementById('profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -168,7 +167,6 @@ async function init() {
     e.target.password.value = '';
   });
 
-  // смена пароля
   document.getElementById('passwordForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
