@@ -9,87 +9,201 @@
 <body>
   <header>
     <div class="container">
-      <a href="index.html" class="logo">Morozhka<span>Apps</span></a>
-      <nav><a href="catalog.html">Каталог</a></nav>
+      <a href="index.html" class="brand">
+        <span class="brand-mark">M</span>
+        Morozhka <span>Apps</span>
+      </a>
+      <nav>
+        <a href="catalog.html">Каталог</a>
+        <a href="admin.html" class="active">Консоль</a>
+      </nav>
     </div>
   </header>
 
   <main class="container">
-    <div id="loginScreen" style="max-width:400px;margin:80px auto">
-      <h1 class="page-title" style="text-align:center">Консоль</h1>
+    <!-- Логин -->
+    <div id="loginScreen" class="login-wrap">
+      <h1>Консоль</h1>
       <div class="form-group">
         <label>Пароль</label>
-        <input type="password" id="password" placeholder="Введите пароль">
+        <input type="password" id="password" placeholder="Пароль">
       </div>
       <button class="btn" style="width:100%" id="loginBtn">Войти</button>
-      <p id="loginError" style="color:var(--danger);margin-top:12px;font-size:13px" class="hidden">Неверный пароль</p>
+      <p id="loginError" class="hidden" style="color:var(--danger);margin-top:12px;font-size:13px;text-align:center">
+        Неверный пароль
+      </p>
     </div>
 
-    <div id="adminScreen" class="hidden">
-      <h1 class="page-title">Консоль</h1>
-      <div class="admin-tabs">
-        <button class="admin-tab active" data-tab="apps">Приложения</button>
-        <button class="admin-tab" data-tab="reviews">Отзывы</button>
-        <button class="admin-tab" data-tab="add">Добавить</button>
+    <!-- Админка -->
+    <div id="adminScreen" class="hidden" style="padding-bottom:64px">
+      <div class="page-header">
+        <h1>Консоль</h1>
+        <p>Управление приложениями, отзывами, категориями и авторами</p>
       </div>
 
-      <div id="tab-apps"><div id="appsList">Загрузка…</div></div>
-      <div id="tab-reviews" class="hidden"><div id="reviewsList">Загрузка…</div></div>
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="add">Добавить</button>
+        <button class="admin-tab" data-tab="apps">Приложения</button>
+        <button class="admin-tab" data-tab="reviews">Отзывы</button>
+        <button class="admin-tab" data-tab="categories">Категории</button>
+        <button class="admin-tab" data-tab="profiles">Авторы</button>
+      </div>
 
-      <div id="tab-add" class="hidden" style="max-width:600px">
-        <form id="addForm">
-          <div class="form-group">
-            <label>Название *</label>
-            <input type="text" name="name" required>
-          </div>
+      <!-- ===== ДОБАВИТЬ ===== -->
+      <div id="tab-add">
+        <form id="addForm" style="max-width:720px">
           <div class="form-row">
             <div class="form-group">
-              <label>Автор *</label>
+              <label>Название приложения *</label>
+              <input type="text" name="name" required>
+            </div>
+            <div class="form-group">
+              <label>Версия</label>
+              <input type="text" name="version" placeholder="1.0.0">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Автор / разработчик *</label>
               <input type="text" name="author" required>
             </div>
             <div class="form-group">
-              <label>Категория *</label>
-              <select name="category" required>
-                <option value="apk">APK</option>
-                <option value="games">Игры</option>
+              <label>Профиль автора (если есть)</label>
+              <select name="author_profile_id" id="authorProfileSelect">
+                <option value="">— без профиля —</option>
+              </select>
+              <div class="hint">Если выбрать — в карточке автор будет кликабельным</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Категории (можно несколько) *</label>
+            <div id="categoryCheckboxes" class="tag-list"></div>
+            <div class="hint">Отметьте хотя бы одну</div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Размер (МБ)</label>
+              <input type="number" step="0.1" name="size_mb" placeholder="25.5">
+            </div>
+            <div class="form-group">
+              <label>Возрастной рейтинг</label>
+              <select name="age_rating">
+                <option value="0+">0+</option>
+                <option value="6+">6+</option>
+                <option value="12+">12+</option>
+                <option value="16+">16+</option>
+                <option value="18+">18+</option>
               </select>
             </div>
           </div>
+
           <div class="form-row">
             <div class="form-group">
-              <label>Версия</label>
-              <input type="text" name="version" placeholder="1.0">
+              <label>Реклама в приложении?</label>
+              <select name="has_ads">
+                <option value="false">Нет</option>
+                <option value="true">Есть</option>
+              </select>
             </div>
             <div class="form-group">
-              <label>Размер (МБ)</label>
-              <input type="number" name="size_mb" step="0.1" placeholder="25.5">
+              <label>Транзакции в приложении?</label>
+              <select name="has_iap">
+                <option value="false">Нет</option>
+                <option value="true">Есть</option>
+              </select>
             </div>
           </div>
+
           <div class="form-group">
             <label>Ссылка на иконку (URL)</label>
             <input type="url" name="icon_url" placeholder="https://...">
           </div>
+
           <div class="form-group">
-            <label>Ссылка на APK (GitHub Releases) *</label>
-            <input type="url" name="download_url" required placeholder="https://github.com/.../file.apk">
+            <label>Скриншоты (по одному URL на строку)</label>
+            <textarea name="screenshots" placeholder="https://...&#10;https://...&#10;https://..."></textarea>
           </div>
+
+          <div class="form-group">
+            <label>Ссылка на APK *</label>
+            <input type="url" name="download_url" required placeholder="https://github.com/.../file.apk">
+            <div class="hint">Загрузите APK в Releases репозитория morozhka-files и вставьте ссылку</div>
+          </div>
+
           <div class="form-group">
             <label>Описание *</label>
             <textarea name="description" required></textarea>
           </div>
+
           <div class="form-group">
             <label>Инструкция по установке</label>
             <textarea name="install_instructions" placeholder="Оставьте пустым — покажется стандартная"></textarea>
           </div>
+
           <button type="submit" class="btn" style="width:100%">Опубликовать</button>
-          <p id="addStatus" style="margin-top:12px;font-size:13px"></p>
+          <p id="addStatus" style="margin-top:12px;font-size:13px;text-align:center"></p>
         </form>
+      </div>
+
+      <!-- ===== ПРИЛОЖЕНИЯ ===== -->
+      <div id="tab-apps" class="hidden">
+        <div id="appsList"><div class="empty">Загрузка…</div></div>
+      </div>
+
+      <!-- ===== ОТЗЫВЫ ===== -->
+      <div id="tab-reviews" class="hidden">
+        <div id="reviewsList"><div class="empty">Загрузка…</div></div>
+      </div>
+
+      <!-- ===== КАТЕГОРИИ ===== -->
+      <div id="tab-categories" class="hidden" style="max-width:520px">
+        <form id="catForm" style="display:flex;gap:10px;margin-bottom:20px">
+          <input type="text" name="name" placeholder="Название категории" required>
+          <button type="submit" class="btn" style="white-space:nowrap">Добавить</button>
+        </form>
+        <div id="catsList"></div>
+      </div>
+
+      <!-- ===== АВТОРЫ ===== -->
+      <div id="tab-profiles" class="hidden" style="max-width:720px">
+        <form id="profileForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Имя автора *</label>
+              <input type="text" name="display_name" required>
+            </div>
+            <div class="form-group">
+              <label>Slug (латиница, без пробелов) *</label>
+              <input type="text" name="slug" required pattern="[a-z0-9-]+" placeholder="my-nick">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Ссылка на аватар</label>
+            <input type="url" name="avatar_url" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label>Био</label>
+            <textarea name="bio" placeholder="Пара слов об авторе"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Ссылки (одна на строку)</label>
+            <textarea name="links" placeholder="https://t.me/...&#10;https://github.com/..."></textarea>
+          </div>
+          <button type="submit" class="btn">Создать профиль</button>
+          <p id="profileStatus" style="margin-top:10px;font-size:13px"></p>
+        </form>
+
+        <div class="section-title" style="margin-top:32px">Все авторы</div>
+        <div id="profilesList"></div>
       </div>
     </div>
   </main>
 
   <footer>
-    <div class="container">© 2026 Morozhka Apps</div>
+    <div class="container">© 2026 MOROZHKA APPS</div>
   </footer>
 
   <script type="module" src="js/admin.js"></script>
