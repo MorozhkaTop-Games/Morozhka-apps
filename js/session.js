@@ -1,4 +1,3 @@
-// Простая сессия: храним account_id и profile_id в localStorage
 const KEY = 'morozhka_session';
 
 export function saveSession(data) {
