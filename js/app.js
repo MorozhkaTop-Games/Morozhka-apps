@@ -128,8 +128,18 @@ async function init() {
   `;
 
   document.getElementById('downloadBtn').addEventListener('click', async () => {
-    await supabase.rpc('increment_downloads', { app_id: appId });
-    window.location.href = app.download_url;
+  let clientId = localStorage.getItem('morozhka_client_id');
+  if (!clientId) {
+    clientId = crypto.randomUUID();
+    localStorage.setItem('morozhka_client_id', clientId);
+  }
+
+  await supabase.rpc('increment_downloads_limited', {
+    app_id: appId,
+    client_id: clientId,
+  });
+
+  window.location.href = app.download_url;
   });
 
   document.getElementById('reviewForm').addEventListener('submit', async (e) => {
