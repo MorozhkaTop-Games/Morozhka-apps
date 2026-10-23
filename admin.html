@@ -89,6 +89,11 @@
             <div id="categoryCheckboxes" class="tag-list"></div>
             <div class="hint">Отметьте хотя бы одну</div>
           </div>
+          <div class="form-group">
+            <label>Slug (для ссылки) *</label>
+            <input type="text" name="slug" required pattern="[a-z0-9-]{2,40}" placeholder="my-app">
+          <div class="hint">Только латиница, цифры и дефис. Например: super-game</div>
+          </div>
 
           <div class="form-row">
             <div class="form-group">
