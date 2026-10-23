@@ -12,3 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
     link.href = 'login.html';
   }
 });
+// кнопка "наверх"
+const backBtn = document.createElement('button');
+backBtn.className = 'back-to-top';
+backBtn.textContent = '↑';
+backBtn.setAttribute('aria-label', 'Наверх');
+document.body.appendChild(backBtn);
+
+window.addEventListener('scroll', () => {
+  backBtn.classList.toggle('visible', window.scrollY > 400);
+});
+
+backBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
