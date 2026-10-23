@@ -28,40 +28,6 @@ async function init() {
   if (error || !profile) {
     content.innerHTML = '<div class="empty">Профиль не найден</div>';
     return;
-
-const passForm = document.getElementById('passwordForm');
-if (passForm) {
-  passForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const statusEl = document.getElementById('passStatus');
-
-    if (fd.get('new1') !== fd.get('new2')) {
-      statusEl.textContent = 'Новые пароли не совпадают';
-      statusEl.style.color = 'var(--danger)';
-      return;
-    }
-
-    statusEl.textContent = 'Смена…';
-    statusEl.style.color = 'var(--muted)';
-
-    const { data, error } = await supabase.rpc('change_password', {
-      p_account_id: session.account_id,
-      p_current_password: fd.get('current'),
-      p_new_password: fd.get('new1'),
-    });
-
-    if (error || data.error) {
-      statusEl.textContent = 'Ошибка: ' + (error?.message || data.error);
-      statusEl.style.color = 'var(--danger)';
-      return;
-    }
-
-    statusEl.textContent = 'Пароль изменён!';
-    statusEl.style.color = 'var(--success)';
-    passForm.reset();
-  });
-}
   }
 
   const { data: apps } = await supabase
@@ -111,6 +77,28 @@ if (passForm) {
             <p id="saveStatus" style="margin-top:10px;font-size:13px"></p>
           </form>
         </div>
+
+        <div class="section" style="margin-top:32px">
+          <div class="section-title">Смена пароля</div>
+          <form id="passwordForm">
+            <div class="form-group">
+              <label>Текущий пароль</label>
+              <input type="password" name="current" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Новый пароль</label>
+                <input type="password" name="new1" required minlength="8">
+              </div>
+              <div class="form-group">
+                <label>Повторите новый</label>
+                <input type="password" name="new2" required minlength="8">
+              </div>
+            </div>
+            <button type="submit" class="btn">Сменить пароль</button>
+            <p id="passStatus" style="margin-top:10px;font-size:13px"></p>
+          </form>
+        </div>
       </div>
 
       <div>
@@ -139,6 +127,7 @@ if (passForm) {
     location.href = 'index.html';
   });
 
+  // сохранение профиля
   document.getElementById('profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -167,7 +156,6 @@ if (passForm) {
       return;
     }
 
-    // обновляем сессию — если менялся slug/имя
     const newSession = {
       ...session,
       display_name: fd.get('display_name'),
@@ -178,5 +166,37 @@ if (passForm) {
     statusEl.textContent = 'Сохранено!';
     statusEl.style.color = 'var(--success)';
     e.target.password.value = '';
+  });
+
+  // смена пароля
+  document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const statusEl = document.getElementById('passStatus');
+
+    if (fd.get('new1') !== fd.get('new2')) {
+      statusEl.textContent = 'Новые пароли не совпадают';
+      statusEl.style.color = 'var(--danger)';
+      return;
+    }
+
+    statusEl.textContent = 'Смена…';
+    statusEl.style.color = 'var(--muted)';
+
+    const { data, error } = await supabase.rpc('change_password', {
+      p_account_id: session.account_id,
+      p_current_password: fd.get('current'),
+      p_new_password: fd.get('new1'),
+    });
+
+    if (error || data.error) {
+      statusEl.textContent = 'Ошибка: ' + (error?.message || data.error);
+      statusEl.style.color = 'var(--danger)';
+      return;
+    }
+
+    statusEl.textContent = 'Пароль изменён!';
+    statusEl.style.color = 'var(--success)';
+    e.target.reset();
   });
 }
