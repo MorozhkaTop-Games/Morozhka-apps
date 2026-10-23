@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Каталог — Morozhka Apps</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <a href="index.html" class="logo">Morozhka<span>Apps</span></a>
+      <nav>
+        <a href="catalog.html">Каталог</a>
+        <a href="publish.html">Публикация</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">Каталог</h1>
+    <div class="categories">
+      <button class="cat-btn active" data-cat="apk">APK</button>
+      <button class="cat-btn" data-cat="games">Игры</button>
+    </div>
+    <div id="apps" class="apps-grid">
+      <div class="empty">Загрузка…</div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">© 2026 Morozhka Apps</div>
+  </footer>
+
+  <script type="module" src="js/catalog.js"></script>
+</body>
+</html>
