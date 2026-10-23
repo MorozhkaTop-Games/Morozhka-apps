@@ -1,21 +1,33 @@
 import { supabase, formatSize, formatDate, esc } from './config.js';
 
 const content = document.getElementById('content');
-const appId = new URLSearchParams(location.search).get('id');
+const params = new URLSearchParams(location.search);
+const appId = params.get('id');
+const appSlug = params.get('slug');
 
-if (!appId) content.innerHTML = '<div class="empty">Приложение не найдено</div>';
-else init();
+if (!appId && !appSlug) {
+  content.innerHTML = '<div class="empty">Приложение не найдено</div>';
+} else {
+  init();
+}
 
 async function init() {
-  const { data: app, error } = await supabase
+  let query = supabase
     .from('apps')
     .select(`
       *,
-      app_categories ( category_id, categories ( name ) )
+      app_categories ( category_id, categories ( name ) ),
+      author:author_profile_id ( slug, display_name )
     `)
-    .eq('id', appId)
-    .eq('status', 'published')
-    .single();
+    .eq('status', 'published');
+
+  if (appSlug) {
+    query = query.eq('slug', appSlug);
+  } else {
+    query = query.eq('id', appId);
+  }
+
+  const { data: app, error } = await query.single();
 
   if (error || !app) {
     content.innerHTML = '<div class="empty">Приложение не найдено</div>';
@@ -24,21 +36,15 @@ async function init() {
 
   document.title = app.name + ' — Morozhka Apps';
 
-  // ссылка на профиль автора, если он есть
-  const authorHtml = app.author_profile_id
-    ? `<a href="profile.html?id=${app.author_profile_id}">${esc(app.author)}</a>`
+  const authorHtml = app.author_profile_id && app.author
+    ? `<a href="profile.html?u=${app.author.slug}">${esc(app.author)}</a>`
     : esc(app.author);
 
-  // категории
   const cats = (app.app_categories || [])
     .map(ac => ac.categories?.name)
     .filter(Boolean);
 
-  // скриншоты
   const screenshots = (app.screenshots || []).filter(Boolean);
-  const screenshotsHtml = screenshots.length
-    ? `<div class="screenshots">${screenshots.map(u => `<img src="${u}" alt="">`).join('')}</div>`
-    : '<p style="color:var(--muted)">Скриншоты не добавлены</p>';
 
   content.innerHTML = `
     <div class="app-detail">
@@ -64,7 +70,7 @@ async function init() {
         ${screenshots.length ? `
         <div class="section">
           <div class="section-title">Скриншоты</div>
-          ${screenshotsHtml}
+          <div class="screenshots">${screenshots.map(u => `<img src="${u}" alt="">`).join('')}</div>
         </div>` : ''}
 
         <div class="section">
@@ -128,25 +134,25 @@ async function init() {
   `;
 
   document.getElementById('downloadBtn').addEventListener('click', async () => {
-  let clientId = localStorage.getItem('morozhka_client_id');
-  if (!clientId) {
-    clientId = crypto.randomUUID();
-    localStorage.setItem('morozhka_client_id', clientId);
-  }
+    let clientId = localStorage.getItem('morozhka_client_id');
+    if (!clientId) {
+      clientId = crypto.randomUUID();
+      localStorage.setItem('morozhka_client_id', clientId);
+    }
 
-  await supabase.rpc('increment_downloads_limited', {
-    app_id: appId,
-    client_id: clientId,
-  });
+    await supabase.rpc('increment_downloads_limited', {
+      app_id: app.id,
+      client_id: clientId,
+    });
 
-  window.location.href = app.download_url;
+    window.location.href = app.download_url;
   });
 
   document.getElementById('reviewForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const { error } = await supabase.from('reviews').insert({
-      app_id: appId,
+      app_id: app.id,
       name: fd.get('name'),
       rating: parseInt(fd.get('rating')),
       text: fd.get('text'),
@@ -155,14 +161,14 @@ async function init() {
     else { alert('Отзыв отправлен на модерацию'); e.target.reset(); }
   });
 
-  loadReviews();
+  loadReviews(app.id);
 }
 
-async function loadReviews() {
+async function loadReviews(id) {
   const box = document.getElementById('reviews');
   const { data } = await supabase
     .from('reviews').select('*')
-    .eq('app_id', appId).eq('status', 'approved')
+    .eq('app_id', id).eq('status', 'approved')
     .order('created_at', { ascending: false });
 
   if (!data || !data.length) {
