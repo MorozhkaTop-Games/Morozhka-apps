@@ -105,12 +105,11 @@ async function loadProfiles() {
   const { data } = await admin.from('profiles').select('*').order('created_at', { ascending: false });
   profilesCache = data || [];
 
-  // селект в форме добавления
+  // селект в форме добавления приложения
   const sel = document.getElementById('authorProfileSelect');
   sel.innerHTML = '<option value="">— без профиля —</option>' +
     profilesCache.map(p => `<option value="${p.id}">${esc(p.display_name)} (@${esc(p.slug)})</option>`).join('');
 
-  // список
   const listBox = document.getElementById('profilesList');
   listBox.innerHTML = profilesCache.length
     ? profilesCache.map(p => `
@@ -118,14 +117,14 @@ async function loadProfiles() {
         <img src="${p.avatar_url || ''}" alt="">
         <div class="grow">
           <h4>${esc(p.display_name)}</h4>
-          <small>@${esc(p.slug)} · <a href="profile.html?id=${p.id}" target="_blank">открыть</a></small>
+          <small>@${esc(p.slug)} · ${p.account_id ? 'зарегистрирован' : 'создан вручную'} · <a href="profile.html?id=${p.id}" target="_blank">открыть</a></small>
         </div>
         <div class="actions">
           <button class="btn btn-danger btn-sm" data-del-profile="${p.id}">Удалить</button>
         </div>
       </div>
     `).join('')
-    : '<div class="empty">Нет профилей</div>';
+    : '<div class="empty">Пока никто не зарегистрировался</div>';
 
   listBox.querySelectorAll('[data-del-profile]').forEach(btn => {
     btn.addEventListener('click', async () => {
