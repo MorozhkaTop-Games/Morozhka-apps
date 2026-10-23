@@ -2,7 +2,10 @@ import { getSession } from './session.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const link = document.querySelector('nav a[href="account.html"]');
-  if (!link) return;
+  if (!link) {
+    console.warn('nav.js: ссылка account.html не найдена в <nav>');
+    return;
+  }
 
   if (getSession()) {
     link.textContent = 'Профиль';
@@ -12,7 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     link.href = 'login.html';
   }
 });
-// кнопка "наверх"
+
+// кнопка "наверх" (если добавлял)
 const backBtn = document.createElement('button');
 backBtn.className = 'back-to-top';
 backBtn.textContent = '↑';
