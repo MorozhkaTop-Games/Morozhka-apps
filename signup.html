@@ -55,49 +55,83 @@
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
   <script type="module">
-    import { supabase } from './js/config.js';
-    import { saveSession } from './js/session.js';
+  import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js';
+  import { saveSession } from './js/session.js';
 
-    const form = document.getElementById('signupForm');
-    const status = document.getElementById('status');
+  const form = document.getElementById('signupForm');
+  const status = document.getElementById('status');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(form);
-      status.textContent = 'Создание…';
-      status.style.color = 'var(--muted)';
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
 
-      const { data, error } = await supabase.rpc('register_user', {
-        p_login: fd.get('login'),
-        p_password: fd.get('password'),
-        p_display_name: fd.get('display_name'),
-        p_slug: fd.get('slug'),
+    // === ПРОВЕРКА КАПЧИ ===
+    const turnstileToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
+    if (!turnstileToken) {
+      status.textContent = 'Пройдите проверку капчи';
+      status.style.color = 'var(--danger)';
+      return;
+    }
+
+    status.textContent = 'Проверка…';
+    status.style.color = 'var(--muted)';
+
+    // отправляем токен на сервер для проверки
+    try {
+      const verifyRes = await fetch(`${SUPABASE_URL}/functions/v1/verify-turnstile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ token: turnstileToken }),
       });
-
-      if (error) {
-        status.textContent = 'Ошибка: ' + error.message;
+      const verify = await verifyRes.json();
+      if (!verify.success) {
+        status.textContent = 'Капча не пройдена. Попробуйте снова.';
         status.style.color = 'var(--danger)';
+        if (window.turnstile) window.turnstile.reset();
         return;
       }
+    } catch (err) {
+      status.textContent = 'Ошибка проверки капчи: ' + err.message;
+      status.style.color = 'var(--danger)';
+      return;
+    }
 
-      if (data.error) {
-        status.textContent = data.error;
-        status.style.color = 'var(--danger)';
-        return;
-      }
-
-      // сразу логиним
-      saveSession({
-        account_id: data.account_id,
-        profile_id: data.profile_id,
-        display_name: fd.get('display_name'),
-        slug: fd.get('slug'),
-      });
-
-      status.textContent = 'Готово! Переходим…';
-      status.style.color = 'var(--success)';
-      setTimeout(() => location.href = 'account.html', 600);
+    // === РЕГИСТРАЦИЯ ===
+    status.textContent = 'Создание…';
+    const { data, error } = await supabase.rpc('register_user', {
+      p_login: fd.get('login'),
+      p_password: fd.get('password'),
+      p_display_name: fd.get('display_name'),
+      p_slug: fd.get('slug'),
     });
+
+    if (error) {
+      status.textContent = 'Ошибка: ' + error.message;
+      status.style.color = 'var(--danger)';
+      if (window.turnstile) window.turnstile.reset();
+      return;
+    }
+    if (data.error) {
+      status.textContent = data.error;
+      status.style.color = 'var(--danger)';
+      if (window.turnstile) window.turnstile.reset();
+      return;
+    }
+
+    saveSession({
+      account_id: data.account_id,
+      profile_id: data.profile_id,
+      display_name: fd.get('display_name'),
+      slug: fd.get('slug'),
+    });
+
+    status.textContent = 'Готово! Переходим…';
+    status.style.color = 'var(--success)';
+    setTimeout(() => location.href = 'account.html', 600);
+  });
   </script>
   <script type="module" src="js/nav.js"></script>
 </body>
