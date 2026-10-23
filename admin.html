@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Консоль — Morozhka Apps</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <a href="index.html" class="logo">Morozhka<span>Apps</span></a>
+      <nav><a href="catalog.html">Каталог</a></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="loginScreen" style="max-width:400px;margin:80px auto">
+      <h1 class="page-title" style="text-align:center">Консоль</h1>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="password" placeholder="Введите пароль">
+      </div>
+      <button class="btn" style="width:100%" id="loginBtn">Войти</button>
+      <p id="loginError" style="color:var(--danger);margin-top:12px;font-size:13px" class="hidden">Неверный пароль</p>
+    </div>
+
+    <div id="adminScreen" class="hidden">
+      <h1 class="page-title">Консоль</h1>
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="apps">Приложения</button>
+        <button class="admin-tab" data-tab="reviews">Отзывы</button>
+        <button class="admin-tab" data-tab="add">Добавить</button>
+      </div>
+
+      <div id="tab-apps"><div id="appsList">Загрузка…</div></div>
+      <div id="tab-reviews" class="hidden"><div id="reviewsList">Загрузка…</div></div>
+
+      <div id="tab-add" class="hidden" style="max-width:600px">
+        <form id="addForm">
+          <div class="form-group">
+            <label>Название *</label>
+            <input type="text" name="name" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Автор *</label>
+              <input type="text" name="author" required>
+            </div>
+            <div class="form-group">
+              <label>Категория *</label>
+              <select name="category" required>
+                <option value="apk">APK</option>
+                <option value="games">Игры</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Версия</label>
+              <input type="text" name="version" placeholder="1.0">
+            </div>
+            <div class="form-group">
+              <label>Размер (МБ)</label>
+              <input type="number" name="size_mb" step="0.1" placeholder="25.5">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Ссылка на иконку (URL)</label>
+            <input type="url" name="icon_url" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label>Ссылка на APK (GitHub Releases) *</label>
+            <input type="url" name="download_url" required placeholder="https://github.com/.../file.apk">
+          </div>
+          <div class="form-group">
+            <label>Описание *</label>
+            <textarea name="description" required></textarea>
+          </div>
+          <div class="form-group">
+            <label>Инструкция по установке</label>
+            <textarea name="install_instructions" placeholder="Оставьте пустым — покажется стандартная"></textarea>
+          </div>
+          <button type="submit" class="btn" style="width:100%">Опубликовать</button>
+          <p id="addStatus" style="margin-top:12px;font-size:13px"></p>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">© 2026 Morozhka Apps</div>
+  </footer>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>
