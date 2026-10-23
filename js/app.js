@@ -12,37 +12,64 @@ if (!appId && !appSlug) {
 }
 
 async function init() {
-  let query = supabase
-    .from('apps')
-    .select(`
-      *,
-      app_categories ( category_id, categories ( name ) ),
-      author:author_profile_id ( slug, display_name )
-    `)
-    .eq('status', 'published');
+  // 1. получаем приложение БЕЗ join
+  let query = supabase.from('apps').select('*');
 
-  if (appSlug) {
-    query = query.eq('slug', appSlug);
-  } else {
+  if (appId) {
     query = query.eq('id', appId);
+  } else {
+    query = query.eq('slug', appSlug);
   }
 
-  const { data: app, error } = await query.single();
+  const { data: app, error } = await query.maybeSingle();
 
-  if (error || !app) {
-    content.innerHTML = '<div class="empty">Приложение не найдено</div>';
+  if (error) {
+    content.innerHTML = '<div class="empty">Ошибка: ' + error.message + '</div>';
     return;
+  }
+
+  if (!app) {
+    content.innerHTML = '<div class="empty">Приложение не найдено в базе</div>';
+    return;
+  }
+
+  if (app.status !== 'published') {
+    content.innerHTML = '<div class="empty">Приложение скрыто (status: ' + app.status + ')</div>';
+    return;
+  }
+
+  // 2. категории отдельно
+  const { data: catLinks } = await supabase
+    .from('app_categories')
+    .select('category_id, categories ( name )')
+    .eq('app_id', app.id);
+
+  const cats = (catLinks || [])
+    .map(ac => ac.categories?.name)
+    .filter(Boolean);
+
+  // 3. автор отдельно
+  let authorSlug = null;
+  let authorName = app.author;
+
+  if (app.author_profile_id) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('slug, display_name')
+      .eq('id', app.author_profile_id)
+      .maybeSingle();
+
+    if (profile) {
+      authorSlug = profile.slug;
+      authorName = profile.display_name || app.author;
+    }
   }
 
   document.title = app.name + ' — Morozhka Apps';
 
-  const authorHtml = app.author_profile_id && app.author
-    ? `<a href="profile.html?u=${app.author.slug}">${esc(app.author)}</a>`
-    : esc(app.author);
-
-  const cats = (app.app_categories || [])
-    .map(ac => ac.categories?.name)
-    .filter(Boolean);
+  const authorHtml = authorSlug
+    ? `<a href="profile.html?u=${authorSlug}">${esc(authorName)}</a>`
+    : esc(authorName);
 
   const screenshots = (app.screenshots || []).filter(Boolean);
 
@@ -140,10 +167,12 @@ async function init() {
       localStorage.setItem('morozhka_client_id', clientId);
     }
 
-    await supabase.rpc('increment_downloads_limited', {
-      app_id: app.id,
-      client_id: clientId,
-    });
+    try {
+      await supabase.rpc('increment_downloads_limited', {
+        app_id: app.id,
+        client_id: clientId,
+      });
+    } catch (e) {}
 
     window.location.href = app.download_url;
   });
