@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Регистрация — Morozhka Apps</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
   <header>
@@ -41,8 +42,7 @@
           <input type="text" name="slug" required pattern="[a-z0-9-]{2,30}" placeholder="my-nick">
           <div class="hint">Только латиница, цифры и дефис</div>
         </div>
-        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-        <div class="cf-turnstile" data-sitekey="0x4AAAAAAFi-wNGd6J0P5XlY" style="margin-bottom:16px"></div>
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAAFi-wNGd6J0P5XlY" data-theme="dark" style="margin-bottom:12px"></div>
         <button type="submit" class="btn" style="width:100%">Создать аккаунт</button>
         <p id="status" style="margin-top:14px;font-size:13px;text-align:center"></p>
       </form>
