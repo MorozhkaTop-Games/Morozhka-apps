@@ -8,7 +8,7 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-async function req(path, options = {}, ms = 15000) {
+async function req(path, options = {}, ms = 5000) { // ЖЕСТКО 5 СЕКУНД
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
@@ -25,10 +25,7 @@ async function req(path, options = {}, ms = 15000) {
 export async function dbSelect(table, query = '') {
   const path = '/rest/v1/' + table + (query ? '?' + query : '');
   const res = await req(path);
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
-  }
+  if (!res.ok) throw new Error('HTTP ' + res.status);
   return await res.json();
 }
 
@@ -38,10 +35,7 @@ export async function dbInsert(table, row) {
     headers: { 'Prefer': 'return=minimal' },
     body: JSON.stringify(row),
   });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
-  }
+  if (!res.ok) throw new Error('HTTP ' + res.status);
   return true;
 }
 
@@ -51,10 +45,7 @@ export async function dbUpdate(table, filter, patch) {
     headers: { 'Prefer': 'return=minimal' },
     body: JSON.stringify(patch),
   });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
-  }
+  if (!res.ok) throw new Error('HTTP ' + res.status);
 }
 
 export async function dbRpc(fn, args = {}) {
@@ -62,10 +53,7 @@ export async function dbRpc(fn, args = {}) {
     method: 'POST',
     body: JSON.stringify(args),
   });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
-  }
+  if (!res.ok) throw new Error('HTTP ' + res.status);
   return await res.json();
 }
 
@@ -74,11 +62,8 @@ export async function storageUpload(bucket, path, file) {
     method: 'POST',
     headers: { 'x-upsert': 'true' },
     body: file,
-  }, 60000);
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error('Upload HTTP ' + res.status + ': ' + t.slice(0, 200));
-  }
+  }, 30000);
+  if (!res.ok) throw new Error('Upload HTTP ' + res.status);
   return await res.json();
 }
 
