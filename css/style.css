@@ -475,6 +475,18 @@ footer {
   background: var(--accent-2);
   box-shadow: 0 0 24px rgba(255,122,0,0.4);
 }
+.download-btn-soon {
+  background: var(--surface-2) !important;
+  color: var(--muted) !important;
+  border: 1px solid var(--border) !important;
+  cursor: not-allowed !important;
+  opacity: 0.7;
+}
+.download-btn-soon:hover {
+  background: var(--surface-2) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
 
 .download-meta {
   margin-top: 20px;
