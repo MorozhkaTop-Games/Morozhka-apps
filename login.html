@@ -3,119 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Вход — Morozhka Apps</title>
-  <link rel="icon" type="image/png" href="favicon.png">
+  <title>Тест — Morozhka Apps</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-  <header>
-    <div class="container">
-      <a href="index.html" class="brand">
-        <img class="brand-mark" src="favicon.png" alt="">
-        Morozhka <em>Apps</em>
-      </a>
-      <nav>
-        <a href="catalog.html">Каталог</a>
-        <a href="publish.html">Публикация</a>
-        <a href="account.html">Профиль</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="container" style="max-width:440px;padding:60px 24px 64px">
-    <div class="login-wrap" style="margin:0">
-      <h1>Вход</h1>
-      <form id="loginForm">
-        <div class="form-group">
-          <label>Логин</label>
-          <input type="text" name="login" required autocomplete="username">
-        </div>
-        <div class="form-group">
-          <label>Пароль</label>
-          <input type="password" name="password" required autocomplete="current-password">
-        </div>
-        <button type="submit" class="btn" style="width:100%">Войти</button>
-        <p id="status" style="margin-top:14px;font-size:13px;text-align:center"></p>
-      </form>
-      <p style="margin-top:20px;text-align:center;font-size:13px;color:var(--muted)">
-        Нет аккаунта? <a href="signup.html">Зарегистрироваться</a>
-      </p>
-    </div>
-  </main>
-
-  <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
+<body style="padding:40px;font-family:sans-serif;background:#1a1410;color:#f0e4d0">
+  <h1>Тест запроса к Supabase</h1>
+  <p id="log" style="font-size:14px;line-height:1.8;white-space:pre-wrap"></p>
 
   <script>
-    const status = document.getElementById('status');
-
-    // 1. Проверяем, что supabase загрузился
-    if (!window.supabase) {
-      status.textContent = 'ОШИБКА: библиотека Supabase не загрузилась';
-      status.style.color = 'red';
-      throw new Error('no supabase');
+    const log = document.getElementById('log');
+    function write(s, color) {
+      log.innerHTML += '<div style="color:' + (color || '#f0e4d0') + '">' + s + '</div>';
     }
-    status.textContent = '1. Библиотека загружена';
-    status.style.color = 'gray';
 
-    const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const URL = 'https://tksbqddskldnaafevmnl.supabase.co/rest/v1/apps?select=id&limit=1';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
-    status.textContent = '2. Клиент создан. Готов к входу';
-    status.style.color = 'gray';
+    write('1. Старт');
+    write('2. Делаю fetch через 3 секунды…');
 
-    const form = document.getElementById('loginForm');
+    setTimeout(() => {
+      write('3. fetch начался');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(form);
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        controller.abort();
+        write('❌ Таймаут 10 сек — fetch не вернулся', 'red');
+      }, 10000);
 
-      status.textContent = '3. Отправляю запрос в Supabase…';
-      status.style.color = 'gray';
-
-      // Таймаут 15 секунд
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Таймаут 15 секунд — Supabase не ответил')), 15000)
-      );
-
-      try {
-        const result = await Promise.race([
-          client.rpc('login_user', {
-            p_login: fd.get('login'),
-            p_password: fd.get('password'),
-          }),
-          timeout,
-        ]);
-
-        if (result.error) {
-          status.textContent = '4. Ошибка Supabase: ' + result.error.message;
-          status.style.color = 'red';
-          return;
-        }
-
-        if (result.data.error) {
-          status.textContent = '4. Отказ: ' + result.data.error;
-          status.style.color = 'red';
-          return;
-        }
-
-        status.textContent = '5. Успех! Перехожу…';
-        status.style.color = 'green';
-
-        localStorage.setItem('morozhka_session', JSON.stringify({
-          account_id: result.data.account_id,
-          profile_id: result.data.profile_id,
-          display_name: result.data.display_name,
-          slug: result.data.slug,
-        }));
-
-        location.href = 'account.html';
-      } catch (err) {
-        status.textContent = '4. ' + err.message;
-        status.style.color = 'red';
-      }
-    });
+      fetch(URL, {
+        headers: {
+          'apikey': KEY,
+          'Authorization': 'Bearer ' + KEY,
+        },
+        signal: controller.signal,
+      })
+        .then(r => {
+          clearTimeout(timer);
+          write('✅ fetch вернулся, статус: ' + r.status, 'green');
+          return r.json();
+        })
+        .then(data => {
+          write('✅ Данные: ' + JSON.stringify(data).slice(0, 200), 'green');
+        })
+        .catch(err => {
+          clearTimeout(timer);
+          write('❌ Ошибка: ' + err.message, 'red');
+        });
+    }, 3000);
   </script>
 </body>
 </html>
