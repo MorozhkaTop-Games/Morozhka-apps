@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://morozhkatop-games.github.io/Morozhka-apps/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://morozhkatop-games.github.io/Morozhka-apps/catalog.html</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://morozhkatop-games.github.io/Morozhka-apps/publish.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://morozhkatop-games.github.io/Morozhka-apps/signup.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://morozhkatop-games.github.io/Morozhka-apps/login.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
