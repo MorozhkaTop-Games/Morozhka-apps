@@ -1,8 +1,7 @@
+// было: withApiKey (?apikey=...), fetchWithRetry 10 попыток ~30 с
+// стало: ключ ТОЛЬКО в заголовках, один fetch с AbortController, таймаут 15 с, без ретраев
 const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
 const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
-
-// Прокси: обходит прямой доступ браузера к supabase.co
-const PROXY = 'https://corsproxy.io/?url=';
 
 const HEADERS = {
   'apikey': KEY,
@@ -11,16 +10,11 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-function buildUrl(path) {
-  // path — это '/rest/v1/apps?...' или '/storage/v1/...'
-  return PROXY + encodeURIComponent(SUPABASE_URL + path);
-}
-
-async function fetchWithTimeout(url, options = {}, ms = 20000) {
+async function req(path, options = {}, ms = 15000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
-    return await fetch(url, {
+    return await fetch(SUPABASE_URL + path, {
       ...options,
       headers: { ...HEADERS, ...(options.headers || {}) },
       signal: ctrl.signal,
@@ -32,7 +26,7 @@ async function fetchWithTimeout(url, options = {}, ms = 20000) {
 
 export async function dbSelect(table, query = '') {
   const path = '/rest/v1/' + table + (query ? '?' + query : '');
-  const res = await fetchWithTimeout(buildUrl(path));
+  const res = await req(path);
   if (!res.ok) {
     const t = await res.text();
     throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
@@ -41,22 +35,20 @@ export async function dbSelect(table, query = '') {
 }
 
 export async function dbInsert(table, row) {
-  const path = '/rest/v1/' + table;
-  const res = await fetchWithTimeout(buildUrl(path), {
+  const res = await req('/rest/v1/' + table, {
     method: 'POST',
-    headers: { 'Prefer': 'return=representation' },
+    headers: { 'Prefer': 'return=minimal' },
     body: JSON.stringify(row),
   });
   if (!res.ok) {
     const t = await res.text();
     throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
   }
-  return await res.json();
+  return true;
 }
 
 export async function dbUpdate(table, filter, patch) {
-  const path = '/rest/v1/' + table + '?' + filter;
-  const res = await fetchWithTimeout(buildUrl(path), {
+  const res = await req('/rest/v1/' + table + '?' + filter, {
     method: 'PATCH',
     headers: { 'Prefer': 'return=minimal' },
     body: JSON.stringify(patch),
@@ -68,8 +60,7 @@ export async function dbUpdate(table, filter, patch) {
 }
 
 export async function dbRpc(fn, args = {}) {
-  const path = '/rest/v1/rpc/' + fn;
-  const res = await fetchWithTimeout(buildUrl(path), {
+  const res = await req('/rest/v1/rpc/' + fn, {
     method: 'POST',
     body: JSON.stringify(args),
   });
@@ -80,9 +71,8 @@ export async function dbRpc(fn, args = {}) {
   return await res.json();
 }
 
-export async function storageUpload(bucket, pathInBucket, file) {
-  const path = '/storage/v1/object/' + bucket + '/' + pathInBucket;
-  const res = await fetchWithTimeout(buildUrl(path), {
+export async function storageUpload(bucket, path, file) {
+  const res = await req('/storage/v1/object/' + bucket + '/' + path, {
     method: 'POST',
     headers: { 'x-upsert': 'true' },
     body: file,
@@ -94,6 +84,6 @@ export async function storageUpload(bucket, pathInBucket, file) {
   return await res.json();
 }
 
-export function storageUrl(bucket, pathInBucket) {
-  return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + pathInBucket;
+export function storageUrl(bucket, path) {
+  return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
 }
