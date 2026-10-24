@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тест 3 запросов</title>
+</head>
+<body style="padding:20px;font-family:monospace;background:#1a1410;color:#f0e4d0;font-size:14px;line-height:1.7">
+  <div id="out"></div>
+  <script>
+    const out = document.getElementById('out');
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzY2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
+    const BASE = 'https://tksbqddskldnaafevmnl.supabase.co/rest/v1/apps?select=id&limit=1&apikey=' + KEY;
+
+    function log(s, c) { out.innerHTML += '<div style="color:' + (c || '#f0e4d0') + '">' + s + '</div>'; }
+
+    async function tryFetch(label, opts) {
+      log('▶ ' + label + '…', '#ffaa00');
+      try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(BASE, { ...opts, signal: controller.signal });
+        clearTimeout(t);
+        const text = await res.text();
+        log('✅ ' + label + ': HTTP ' + res.status + ', ответ: ' + text.slice(0, 80), 'green');
+      } catch (e) {
+        log('❌ ' + label + ': ' + e.name + ' — ' + e.message, 'red');
+      }
+    }
+
+    (async () => {
+      // 1. Обычный GET
+      await tryFetch('Обычный GET', {});
+
+      // 2. GET с Accept: application/json (как хочет Supabase)
+      await tryFetch('GET с Accept: application/json', {
+        headers: { 'Accept': 'application/json' }
+      });
+
+      // 3. GET с mode: 'cors' + Accept: application/json
+      await tryFetch('GET mode=cors + Accept: json', {
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+    })();
+  </script>
+</body>
+</html>
