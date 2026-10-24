@@ -443,11 +443,17 @@ footer {
 .info-row .v.no { color: var(--success); }
 
 .download-box {
-  position: sticky; top: 88px;
+  position: sticky; 
+  top: 88px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 24px;
+  align-self: start;
+  max-width: 100%;
+}
+@media (max-width: 860px) {
+  .download-box { position: static; top: auto; }
 }
 .download-box .size {
   font-family: var(--mono);
