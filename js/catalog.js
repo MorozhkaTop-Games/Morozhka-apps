@@ -3,21 +3,10 @@ import { dbSelect } from './api.js';
 const grid = document.getElementById('apps');
 const filtersBox = document.getElementById('filters');
 
-if (!grid) {
-  document.body.innerHTML = '<div style="color:red;padding:20px">ОШИБКА: #apps не найден</div>';
-  throw new Error('no #apps');
-}
-
 grid.innerHTML = '<div class="empty">Загрузка…</div>';
 
 let currentCat = null;
 let allApps = [];
-
-function formatSize(bytes) {
-  if (!bytes) return '—';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
-}
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
@@ -25,31 +14,21 @@ function esc(s) {
   }[c]));
 }
 
-async function loadApps() {
-  // 1. Сначала — из кеша
-  const cached = localStorage.getItem('cache_apps');
-  if (cached) {
-    try {
-      const apps = JSON.parse(cached);
-      if (apps && apps.length) {
-        allApps = apps;
-        renderApps();
-      }
-    } catch (e) {}
-  }
+function formatSize(bytes) {
+  if (!bytes) return '—';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
 
-  // 2. Потом — свежие с Supabase
+async function loadApps() {
   try {
     const apps = await dbSelect('apps',
       'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,app_categories(category_id)&status=eq.published&order=created_at.desc'
     );
     allApps = apps || [];
-    localStorage.setItem('cache_apps', JSON.stringify(allApps));
     renderApps();
   } catch (e) {
-    if (!cached) {
-      grid.innerHTML = '<div style="color:red;padding:20px">Ошибка: ' + e.message + '</div>';
-    }
+    grid.innerHTML = '<div class="empty">Не удалось загрузить. Обновите страницу.</div>';
   }
 }
 
@@ -96,9 +75,7 @@ async function loadCategories() {
         renderApps();
       });
     });
-  } catch (e) {
-    console.warn('Категории:', e.message);
-  }
+  } catch (e) {}
 }
 
 loadApps();
