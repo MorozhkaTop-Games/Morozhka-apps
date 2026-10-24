@@ -35,7 +35,10 @@ async function init() {
 
   content.innerHTML = `
     <div class="profile-header">
-      <img src="${profile.avatar_url || ''}" alt="">
+      <img src="${profile.icon_url || ''}" alt="">
+      ${profile.icon_url
+  ? `<img src="${esc(profile.icon_url)}" alt="">`
+  : `<div style="width:96px;height:96px;border-radius:50%;background:var(--surface-2);border:2px dashed var(--border-2);display:flex;align-items:center;justify-content:center;font-size:40px">🎃</div>`}
       <div>
         <h1>${esc(profile.display_name)}</h1>
         <div class="slug">@${esc(profile.slug)}</div>
