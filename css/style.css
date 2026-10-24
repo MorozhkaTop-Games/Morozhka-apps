@@ -40,6 +40,8 @@ body {
 main {
   flex: 1 0 auto;
   padding-bottom: 32px;
+  overflow: visible;
+  min-width: 0;
 }
 footer {
   flex-shrink: 0;
