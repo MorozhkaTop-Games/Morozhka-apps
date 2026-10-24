@@ -1,5 +1,3 @@
-// было: createClient без таймаута
-// стало: глобальный fetch с AbortController до createClient
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
