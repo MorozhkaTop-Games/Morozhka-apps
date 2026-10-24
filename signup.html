@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Регистрация — Morozhka Apps</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
@@ -59,11 +59,14 @@
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
   <script type="module">
-    import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js?v=2';
-    import { saveSession } from './js/session.js?v=2';
+    import { dbRpc, dbSelect } from './js/api.js';
+    import { saveSession } from './js/session.js';
 
     const form = document.getElementById('signupForm');
     const status = document.getElementById('status');
+
+    const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
+    const KEY = 'ВСТАВЬ_КЛЮЧ_ANON_ИЗ_SUPABASE';
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -84,7 +87,8 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': KEY,
+            'Authorization': 'Bearer ' + KEY,
           },
           body: JSON.stringify({ token: turnstileToken }),
         });
@@ -102,61 +106,39 @@
       }
 
       status.textContent = 'Создание…';
-      const { data, error } = await supabase.rpc('register_user', {
-        p_login: fd.get('login'),
-        p_password: fd.get('password'),
-        p_display_name: fd.get('display_name'),
-        p_slug: fd.get('slug'),
-      });
+      status.style.color = 'var(--muted)';
 
-      if (error) {
-        status.textContent = 'Ошибка: ' + error.message;
+      try {
+        const data = await dbRpc('register_user', {
+          p_login: fd.get('login'),
+          p_password: fd.get('password'),
+          p_display_name: fd.get('display_name'),
+          p_slug: fd.get('slug'),
+        });
+
+        if (data.error) {
+          status.textContent = data.error;
+          status.style.color = 'var(--danger)';
+          if (window.turnstile) window.turnstile.reset();
+          return;
+        }
+
+        saveSession({
+          account_id: data.account_id,
+          profile_id: data.profile_id,
+          display_name: fd.get('display_name'),
+          slug: fd.get('slug'),
+        });
+
+        status.textContent = 'Готово! Переходим…';
+        status.style.color = 'var(--success)';
+        setTimeout(() => location.href = 'account.html', 600);
+      } catch (err) {
+        status.textContent = 'Ошибка: ' + err.message;
         status.style.color = 'var(--danger)';
         if (window.turnstile) window.turnstile.reset();
-        return;
-      }
-      if (data.error) {
-        status.textContent = data.error;
-        status.style.color = 'var(--danger)';
-        if (window.turnstile) window.turnstile.reset();
-        return;
-      }
-
-      saveSession({
-        account_id: data.account_id,
-        profile_id: data.profile_id,
-        display_name: fd.get('display_name'),
-        slug: fd.get('slug'),
-      });
-
-      status.textContent = 'Готово! Переходим…';
-      status.style.color = 'var(--success)';
-      setTimeout(() => location.href = 'account.html', 600);
-    });
-
-    const slugInput = form.querySelector('[name="slug"]');
-    const slugHint = slugInput.parentElement.querySelector('.hint');
-
-    slugInput.addEventListener('input', async () => {
-      const slug = slugInput.value.toLowerCase().trim();
-      if (!/^[a-z0-9-]{2,30}$/.test(slug)) {
-        slugHint.textContent = 'Только латиница, цифры и дефис (2-30)';
-        slugHint.style.color = 'var(--muted)';
-        return;
-      }
-      slugHint.textContent = 'Проверка…';
-      slugHint.style.color = 'var(--muted)';
-      const { data } = await supabase.from('profiles').select('id').eq('slug', slug).maybeSingle();
-      if (data) {
-        slugHint.textContent = '✗ занят';
-        slugHint.style.color = 'var(--danger)';
-      } else {
-        slugHint.textContent = '✓ свободен';
-        slugHint.style.color = 'var(--success)';
       }
     });
   </script>
-  <script type="module" src="js/nav.js?v=2"></script>
-  <script type="module" src="js/halloween.js?v=2"></script>
 </body>
 </html>
