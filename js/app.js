@@ -75,9 +75,8 @@ async function init() {
     : esc(authorName);
 
   const screenshots = (app.screenshots || []).filter(Boolean);
-
-  // Звёзды
   const stars = renderStars(rating.avg);
+  const hasDownload = !!app.download_url;
 
   content.innerHTML = `
     <div class="app-detail">
@@ -159,7 +158,12 @@ async function init() {
 
       <div>
         <div class="download-box">
-          <button class="download-btn" id="downloadBtn">Скачать</button>
+          ${hasDownload ? `
+            <button class="download-btn" id="downloadBtn">Скачать</button>
+          ` : `
+            <button class="download-btn download-btn-soon" disabled>Скоро</button>
+            <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:8px">Приложение ещё не готово</div>
+          `}
           <div class="size">${formatSize(app.size_bytes)}</div>
           <div class="download-meta">
             <div><span>Версия</span><span>${esc(app.version || '—')}</span></div>
@@ -172,22 +176,25 @@ async function init() {
     </div>
   `;
 
-  document.getElementById('downloadBtn').addEventListener('click', async () => {
-    let clientId = localStorage.getItem('morozhka_client_id');
-    if (!clientId) {
-      clientId = crypto.randomUUID();
-      localStorage.setItem('morozhka_client_id', clientId);
-    }
+  const downloadBtn = document.getElementById('downloadBtn');
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', async () => {
+      let clientId = localStorage.getItem('morozhka_client_id');
+      if (!clientId) {
+        clientId = crypto.randomUUID();
+        localStorage.setItem('morozhka_client_id', clientId);
+      }
 
-    try {
-      await supabase.rpc('increment_downloads_limited', {
-        app_id: app.id,
-        client_id: clientId,
-      });
-    } catch (e) {}
+      try {
+        await supabase.rpc('increment_downloads_limited', {
+          app_id: app.id,
+          client_id: clientId,
+        });
+      } catch (e) {}
 
-    window.location.href = app.download_url;
-  });
+      window.location.href = app.download_url;
+    });
+  }
 
   document.getElementById('reviewForm').addEventListener('submit', async (e) => {
     e.preventDefault();
