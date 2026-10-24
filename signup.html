@@ -65,8 +65,9 @@
     const form = document.getElementById('signupForm');
     const status = document.getElementById('status');
 
+    // ВСТАВЬ СЮДА СВОЙ ANON-КЛЮЧ ИЗ SUPABASE
     const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
-    const KEY = 'ВСТАВЬ_КЛЮЧ_ANON_ИЗ_SUPABASE';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -92,6 +93,7 @@
           },
           body: JSON.stringify({ token: turnstileToken }),
         });
+        
         const verify = await verifyRes.json();
         if (!verify.success) {
           status.textContent = 'Капча не пройдена. Попробуйте снова.';
