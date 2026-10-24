@@ -5,19 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Вход — Morozhka Apps</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <meta property="og:title" content="Morozhka Apps — каталог избранных игр для Android">
-  <meta property="og:description" content="Без вирусов. Только проверенные приложения от самих авторов.">
-  <meta property="og:image" content="https://morozhkatop-games.github.io/Morozhka-apps/favicon.png">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://morozhkatop-games.github.io/Morozhka-apps/">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
   <header>
     <div class="container">
       <a href="index.html" class="brand">
         <img class="brand-mark" src="favicon.png" alt="">
-        Morozhka <span>Apps</span>
+        Morozhka <em>Apps</em>
       </a>
       <nav>
         <a href="catalog.html">Каталог</a>
@@ -51,8 +46,8 @@
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
   <script type="module">
-    import { supabase } from './js/config.js';
-    import { saveSession } from './js/session.js';
+    import { supabase } from './js/config.js?v=2';
+    import { saveSession } from './js/session.js?v=2';
 
     const form = document.getElementById('loginForm');
     const status = document.getElementById('status');
@@ -73,7 +68,6 @@
         status.style.color = 'var(--danger)';
         return;
       }
-
       if (data.error) {
         status.textContent = data.error;
         status.style.color = 'var(--danger)';
@@ -90,7 +84,7 @@
       location.href = 'account.html';
     });
   </script>
-  <script type="module" src="js/nav.js"></script>
-  <script type="module" src="js/halloween.js"></script>
+  <script type="module" src="js/nav.js?v=2"></script>
+  <script type="module" src="js/halloween.js?v=2"></script>
 </body>
 </html>
