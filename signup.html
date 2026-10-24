@@ -64,6 +64,8 @@
 
     const form = document.getElementById('signupForm');
     const status = document.getElementById('status');
+    const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzY2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -76,17 +78,44 @@
         return;
       }
 
+      status.textContent = 'Проверка капчи…';
+      status.style.color = 'var(--muted)';
+
+      try {
+        const verifyRes = await fetch(`${SUPABASE_URL}/functions/v1/verify-turnstile`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': KEY,
+            'Authorization': 'Bearer ' + KEY,
+          },
+          body: JSON.stringify({ token: turnstileToken }),
+        });
+        
+        if (!verifyRes.ok) throw new Error('Ошибка сервера проверки');
+        const verify = await verifyRes.json();
+        
+        if (!verify.success) {
+          status.textContent = 'Капча не пройдена. Попробуйте снова.';
+          status.style.color = 'var(--danger)';
+          if (window.turnstile) window.turnstile.reset();
+          return;
+        }
+      } catch (err) {
+        status.textContent = 'Ошибка проверки: ' + err.message;
+        status.style.color = 'var(--danger)';
+        return;
+      }
+
       status.textContent = 'Создание…';
       status.style.color = 'var(--muted)';
 
       try {
-        // Отправляем токен в базу!
         const data = await dbRpc('register_user', {
           p_login: fd.get('login'),
           p_password: fd.get('password'),
           p_display_name: fd.get('display_name'),
           p_slug: fd.get('slug'),
-          p_turnstile_token: turnstileToken
         });
 
         if (data.error) {
@@ -109,7 +138,6 @@
       } catch (err) {
         status.textContent = 'Ошибка: ' + err.message;
         status.style.color = 'var(--danger)';
-        if (window.turnstile) window.turnstile.reset();
       }
     });
   </script>
