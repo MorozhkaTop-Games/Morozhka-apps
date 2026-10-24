@@ -59,13 +59,13 @@
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
   <script type="module">
-    import { dbRpc } from './js/api.js';
     import { saveSession } from './js/session.js';
 
     const form = document.getElementById('signupForm');
     const status = document.getElementById('status');
+    
     const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
-    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzY2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -82,6 +82,7 @@
       status.style.color = 'var(--muted)';
 
       try {
+        // Проверка капчи в Edge-функции
         const verifyRes = await fetch(`${SUPABASE_URL}/functions/v1/verify-turnstile`, {
           method: 'POST',
           headers: {
@@ -92,9 +93,12 @@
           body: JSON.stringify({ token: turnstileToken }),
         });
         
-        if (!verifyRes.ok) throw new Error('Ошибка сервера проверки');
-        const verify = await verifyRes.json();
+        if (!verifyRes.ok) {
+          const errText = await verifyRes.text();
+          throw new Error('Сервер ответил ' + verifyRes.status + ': ' + errText);
+        }
         
+        const verify = await verifyRes.json();
         if (!verify.success) {
           status.textContent = 'Капча не пройдена. Попробуйте снова.';
           status.style.color = 'var(--danger)';
@@ -111,12 +115,23 @@
       status.style.color = 'var(--muted)';
 
       try {
-        const data = await dbRpc('register_user', {
-          p_login: fd.get('login'),
-          p_password: fd.get('password'),
-          p_display_name: fd.get('display_name'),
-          p_slug: fd.get('slug'),
+        // Регистрация в базе (напрямую, без перехватчиков)
+        const regRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/register_user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': KEY,
+            'Authorization': 'Bearer ' + KEY,
+          },
+          body: JSON.stringify({
+            p_login: fd.get('login'),
+            p_password: fd.get('password'),
+            p_display_name: fd.get('display_name'),
+            p_slug: fd.get('slug'),
+          }),
         });
+
+        const data = await regRes.json();
 
         if (data.error) {
           status.textContent = data.error;
