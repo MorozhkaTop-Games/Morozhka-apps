@@ -28,11 +28,11 @@
       <form id="loginForm">
         <div class="form-group">
           <label>Логин</label>
-          <input type="text" name="login" required>
+          <input type="text" name="login" required autocomplete="username">
         </div>
         <div class="form-group">
           <label>Пароль</label>
-          <input type="password" name="password" required>
+          <input type="password" name="password" required autocomplete="current-password">
         </div>
         <button type="submit" class="btn" style="width:100%">Войти</button>
         <p id="status" style="margin-top:14px;font-size:13px;text-align:center"></p>
@@ -45,9 +45,9 @@
 
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
-  <script>
-    const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
-    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
+  <script type="module">
+    import { dbRpc } from './js/api.js';
+    import { saveSession } from './js/session.js';
 
     const form = document.getElementById('loginForm');
     const status = document.getElementById('status');
@@ -56,51 +56,31 @@
       e.preventDefault();
       const fd = new FormData(form);
       status.textContent = 'Вход…';
-      status.style.color = 'gray';
+      status.style.color = 'var(--muted)';
 
       try {
-        const res = await Promise.race([
-          fetch(SUPABASE_URL + '/rest/v1/rpc/login_user', {
-            method: 'POST',
-            headers: {
-              'apikey': KEY,
-              'Authorization': 'Bearer ' + KEY,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              p_login: fd.get('login'),
-              p_password: fd.get('password'),
-            }),
-          }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('Таймаут 15 сек')), 15000)),
-        ]);
-
-        if (!res.ok) {
-          const t = await res.text();
-          throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
-        }
-
-        const data = await res.json();
+        const data = await dbRpc('login_user', {
+          p_login: fd.get('login'),
+          p_password: fd.get('password'),
+        });
 
         if (data.error) {
           status.textContent = data.error;
-          status.style.color = 'red';
+          status.style.color = 'var(--danger)';
           return;
         }
 
-        localStorage.setItem('morozhka_session', JSON.stringify({
+        saveSession({
           account_id: data.account_id,
           profile_id: data.profile_id,
           display_name: data.display_name,
           slug: data.slug,
-        }));
+        });
 
-        status.textContent = 'Успех, перехожу…';
-        status.style.color = 'green';
         location.href = 'account.html';
       } catch (err) {
         status.textContent = err.message;
-        status.style.color = 'red';
+        status.style.color = 'var(--danger)';
       }
     });
   </script>
