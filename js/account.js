@@ -35,6 +35,8 @@ async function init() {
     .eq('author_profile_id', profile.id)
     .order('created_at', { ascending: false });
 
+  const currentIcon = profile.icon_url || '';
+
   content.innerHTML = `
     <div class="page-header">
       <h1>Мой профиль</h1>
@@ -58,43 +60,30 @@ async function init() {
               </div>
             </div>
 
-            <!-- АВАТАР -->
+            <!-- ИКОНКА ПРОФИЛЯ -->
             <div class="form-group">
-              <label>Аватар профиля</label>
-              <div class="file-input-wrap" id="avatarWrap">
-                <span class="file-input-icon">🎃</span>
-                <div class="file-input-text">
-                  <strong>Нажмите или перетащите</strong><br>
-                  PNG, JPG, WebP до 2 МБ
+              <label>Иконка профиля</label>
+              <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
+                <div id="iconPreview">
+                  ${currentIcon
+                    ? `<img src="${esc(currentIcon)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">`
+                    : `<div style="width:80px;height:80px;border-radius:50%;background:var(--surface-2);border:2px dashed var(--border-2);display:flex;align-items:center;justify-content:center;font-size:32px">🎃</div>`}
                 </div>
-                <input type="file" accept="image/*" id="avatarInput">
-                <div class="file-input-name" id="avatarName"></div>
-              </div>
-              <div class="hint" id="avatarHint">${profile.avatar_url ? 'Аватар загружен' : 'Аватар не загружен'}</div>
-              <div id="avatarPreview" style="margin-top:12px">
-                ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">` : ''}
-              </div>
-            </div>
-            <input type="hidden" id="avatarUrlHidden" value="${esc(profile.avatar_url || '')}">
-
-            <!-- ИКОНКА -->
-            <div class="form-group">
-              <label>Иконка профиля (для карточек)</label>
-              <div class="file-input-wrap" id="iconWrap">
-                <span class="file-input-icon">⭐</span>
-                <div class="file-input-text">
-                  <strong>Нажмите или перетащите</strong><br>
-                  PNG 64×64, до 1 МБ
+                <div style="flex:1">
+                  <div class="file-input-wrap" id="iconWrap">
+                    <span class="file-input-icon">⭐</span>
+                    <div class="file-input-text">
+                      <strong>Нажмите или перетащите</strong><br>
+                      PNG, JPG, WebP до 2 МБ
+                    </div>
+                    <input type="file" accept="image/*" id="iconInput">
+                    <div class="file-input-name" id="iconName"></div>
+                  </div>
                 </div>
-                <input type="file" accept="image/*" id="iconInput">
-                <div class="file-input-name" id="iconName"></div>
               </div>
-              <div class="hint" id="iconHint">${profile.icon_url ? 'Иконка загружена' : 'Иконка не загружена'}</div>
-              <div id="iconPreview" style="margin-top:12px">
-                ${profile.icon_url ? `<img src="${esc(profile.icon_url)}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:2px solid var(--accent)">` : ''}
-              </div>
+              <div class="hint" id="iconHint">${currentIcon ? 'Иконка загружена' : 'Иконка не загружена'}</div>
             </div>
-            <input type="hidden" id="iconUrlHidden" value="${esc(profile.icon_url || '')}">
+            <input type="hidden" id="iconUrlHidden" value="${esc(currentIcon)}">
 
             <div class="form-group">
               <label>О себе</label>
@@ -166,54 +155,6 @@ async function init() {
     location.href = 'index.html';
   });
 
-  // ===== ЗАГРУЗКА АВАТАРА =====
-  const avatarInput = document.getElementById('avatarInput');
-  const avatarName = document.getElementById('avatarName');
-  const avatarHint = document.getElementById('avatarHint');
-  const avatarPreview = document.getElementById('avatarPreview');
-  const avatarUrlHidden = document.getElementById('avatarUrlHidden');
-
-  avatarInput?.addEventListener('change', async () => {
-    const file = avatarInput.files[0];
-    if (!file) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-      avatarHint.textContent = 'Файл больше 2 МБ';
-      avatarHint.style.color = 'var(--danger)';
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      avatarHint.textContent = 'Только изображения';
-      avatarHint.style.color = 'var(--danger)';
-      return;
-    }
-
-    avatarName.textContent = file.name;
-    avatarHint.textContent = 'Загрузка…';
-    avatarHint.style.color = 'var(--muted)';
-
-    const ext = file.name.split('.').pop();
-    const path = `user-${session.account_id}/${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from('avatars')
-      .upload(path, file, { upsert: true });
-
-    if (error) {
-      avatarHint.textContent = 'Ошибка: ' + error.message;
-      avatarHint.style.color = 'var(--danger)';
-      return;
-    }
-
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-    const publicUrl = data.publicUrl;
-
-    avatarUrlHidden.value = publicUrl;
-    avatarHint.textContent = '✅ Загружено';
-    avatarHint.style.color = 'var(--success)';
-    avatarPreview.innerHTML = `<img src="${publicUrl}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">`;
-  });
-
   // ===== ЗАГРУЗКА ИКОНКИ =====
   const iconInput = document.getElementById('iconInput');
   const iconName = document.getElementById('iconName');
@@ -225,8 +166,13 @@ async function init() {
     const file = iconInput.files[0];
     if (!file) return;
 
-    if (file.size > 1024 * 1024) {
-      iconHint.textContent = 'Файл больше 1 МБ';
+    if (file.size > 2 * 1024 * 1024) {
+      iconHint.textContent = 'Файл больше 2 МБ';
+      iconHint.style.color = 'var(--danger)';
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      iconHint.textContent = 'Только изображения';
       iconHint.style.color = 'var(--danger)';
       return;
     }
@@ -252,9 +198,9 @@ async function init() {
     const publicUrl = data.publicUrl;
 
     iconUrlHidden.value = publicUrl;
-    iconHint.textContent = '✅ Загружено';
+    iconHint.textContent = '✅ Загружено (не забудьте сохранить профиль)';
     iconHint.style.color = 'var(--success)';
-    iconPreview.innerHTML = `<img src="${publicUrl}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:2px solid var(--accent)">`;
+    iconPreview.innerHTML = `<img src="${publicUrl}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">`;
   });
 
   // ===== СОХРАНЕНИЕ ПРОФИЛЯ =====
@@ -270,10 +216,9 @@ async function init() {
       p_current_password: fd.get('password'),
       p_display_name: fd.get('display_name'),
       p_slug: fd.get('slug'),
-      p_avatar_url: avatarUrlHidden.value || '',
+      p_icon_url: iconUrlHidden.value || '',
       p_bio: fd.get('bio') || '',
       p_links: fd.get('links') || '',
-      p_icon_url: iconUrlHidden.value || '',
     });
 
     if (error) {
