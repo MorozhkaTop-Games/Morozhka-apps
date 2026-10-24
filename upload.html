@@ -79,15 +79,14 @@
 
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
-  <script type="module">
-    import { supabase } from './js/config.js';
+    <script type="module">
+    import { storageUpload, storageUrl } from './js/api.js';
     import { getSession } from './js/session.js';
 
     const form = document.getElementById('uploadForm');
     const status = document.getElementById('status');
     const session = getSession();
 
-    // Показать имя выбранного файла
     function bindName(inputId, nameId, multiple = false) {
       const input = document.getElementById(inputId);
       const name = document.getElementById(nameId);
@@ -101,7 +100,6 @@
     bindName('iconInput', 'iconName');
     bindName('screensInput', 'screensName', true);
 
-    // Drag & drop
     document.querySelectorAll('.file-input-wrap').forEach(wrap => {
       ['dragenter', 'dragover'].forEach(ev => {
         wrap.addEventListener(ev, (e) => { e.preventDefault(); wrap.classList.add('drag'); });
@@ -113,7 +111,6 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-
       if (!session) {
         status.textContent = 'Войдите, чтобы загружать файлы';
         status.style.color = 'var(--danger)';
@@ -140,10 +137,8 @@
           if (iconFile.size > 2 * 1024 * 1024) throw new Error('Иконка больше 2 МБ');
           const ext = iconFile.name.split('.').pop();
           const path = `${userId}/icon-${Date.now()}.${ext}`;
-          const { error } = await supabase.storage.from('app-files').upload(path, iconFile);
-          if (error) throw error;
-          const { data } = supabase.storage.from('app-files').getPublicUrl(path);
-          results.icon_url = data.publicUrl;
+          await storageUpload('app-files', path, iconFile);
+          results.icon_url = storageUrl('app-files', path);
           document.getElementById('iconHint').innerHTML = `✅ <a href="${results.icon_url}" target="_blank">Открыть</a>`;
           document.getElementById('iconHint').style.color = 'var(--success)';
         }
@@ -152,10 +147,8 @@
           if (file.size > 10 * 1024 * 1024) continue;
           const ext = file.name.split('.').pop();
           const path = `${userId}/screen-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
-          const { error } = await supabase.storage.from('app-screenshots').upload(path, file);
-          if (error) continue;
-          const { data } = supabase.storage.from('app-screenshots').getPublicUrl(path);
-          results.screenshots.push(data.publicUrl);
+          await storageUpload('app-screenshots', path, file);
+          results.screenshots.push(storageUrl('app-screenshots', path));
         }
 
         document.getElementById('screensHint').innerHTML = `✅ Загружено: ${results.screenshots.length} шт.`;
@@ -165,10 +158,7 @@
           <div style="color:var(--success);margin-bottom:12px;font-weight:600">✅ Готово!</div>
           <div style="font-size:12px;color:var(--muted);word-break:break-all;text-align:left;background:var(--surface);padding:12px;border-radius:6px">
             ${results.icon_url ? `<div><strong>Иконка:</strong><br>${results.icon_url}</div>` : ''}
-            ${results.screenshots.length ? `<div style="margin-top:8px"><strong>Скриншоты:</strong><br>${results.screenshots.map(u => u).join('<br>')}</div>` : ''}
-          </div>
-          <div style="margin-top:16px;font-size:12px;color:var(--muted)">
-            Скопируйте ссылки и отправьте заявку через <a href="publish.html">страницу публикации</a>.
+            ${results.screenshots.length ? `<div style="margin-top:8px"><strong>Скриншоты:</strong><br>${results.screenshots.join('<br>')}</div>` : ''}
           </div>
         `;
         status.style.color = 'var(--text)';
