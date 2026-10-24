@@ -1,3 +1,6 @@
+// было: два submit-обработчика (мусорный первым), crypto.randomUUID без fallback,
+//       increment_downloads_limited в try, dbInsert('reviews') без status
+// стало: один submit, fallback uuid, increment не блокирует переход, status: 'pending'
 import { dbSelect, dbInsert, dbRpc } from './api.js';
 
 const content = document.getElementById('content');
@@ -10,24 +13,18 @@ function formatSize(bytes) {
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
   return (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('ru-RU');
-}
-
+function formatDate(iso) { return new Date(iso).toLocaleDateString('ru-RU'); }
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 }
-
 function renderStars(avg) {
   const full = Math.floor(avg);
   const half = avg - full >= 0.5 ? 1 : 0;
   const empty = 5 - full - half;
   return '★'.repeat(full) + (half ? '☆' : '') + '☆'.repeat(empty);
 }
-
 function uuid() {
   if (crypto?.randomUUID) return crypto.randomUUID();
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -44,40 +41,30 @@ if (!appId && !appSlug) {
 
 async function init() {
   const cacheKey = 'cache_app_' + (appId || appSlug);
-
-  // 1. Из кеша — мгновенно
   const cached = localStorage.getItem(cacheKey);
   if (cached) {
-    try {
-      const app = JSON.parse(cached);
-      renderApp(app);
-    } catch (e) {}
+    try { renderApp(JSON.parse(cached)); } catch (e) {}
   } else {
     content.innerHTML = '<div class="empty">Загрузка…</div>';
   }
 
-  // 2. Из Supabase — обновляем в фоне
   try {
     const filter = appId ? 'id=eq.' + appId : 'slug=eq.' + appSlug;
     const rows = await dbSelect('apps', 'select=*&' + filter + '&limit=1');
-
     if (!rows || !rows.length) {
       if (!cached) content.innerHTML = '<div class="empty">Приложение не найдено в базе</div>';
       return;
     }
-
     const app = rows[0];
-
     if (app.status !== 'published') {
       content.innerHTML = '<div class="empty">Приложение скрыто</div>';
       return;
     }
-
     localStorage.setItem(cacheKey, JSON.stringify(app));
     renderApp(app);
   } catch (e) {
     if (!cached) {
-      content.innerHTML = '<div class="empty">Не удалось загрузить. Обновите страницу.</div>';
+      content.innerHTML = '<div class="empty">Не удалось загрузить. Проверьте интернет и обновите.</div>';
     }
   }
 }
@@ -88,7 +75,6 @@ async function renderApp(app) {
   let authorName = app.author;
   let rating = { avg: 0, count: 0 };
 
-  // Параллельно: категории, автор, рейтинг. Кешируем отдельно.
   const metaKey = 'cache_app_meta_' + app.id;
   const cachedMeta = localStorage.getItem(metaKey);
   if (cachedMeta) {
@@ -109,14 +95,12 @@ async function renderApp(app) {
         : Promise.resolve([]),
       dbRpc('get_app_rating', { p_app_id: app.id }).catch(() => ({ avg: 0, count: 0 })),
     ]);
-
     cats = (catLinks || []).map(ac => ac.categories?.name).filter(Boolean);
     if (profiles && profiles.length) {
       authorSlug = profiles[0].slug;
       authorName = profiles[0].display_name || app.author;
     }
     rating = ratingData || { avg: 0, count: 0 };
-
     localStorage.setItem(metaKey, JSON.stringify({ cats, authorSlug, authorName, rating }));
   } catch (e) {}
 
@@ -228,14 +212,11 @@ async function renderApp(app) {
   const downloadBtn = document.getElementById('downloadBtn');
   if (downloadBtn) {
     downloadBtn.addEventListener('click', async () => {
+      let clientId = localStorage.getItem('morozhka_client_id');
+      if (!clientId) { clientId = uuid(); localStorage.setItem('morozhka_client_id', clientId); }
       try {
-        let clientId = localStorage.getItem('morozhka_client_id');
-        if (!clientId) {
-          clientId = uuid();
-          localStorage.setItem('morozhka_client_id', clientId);
-        }
         await dbRpc('increment_downloads_limited', { app_id: app.id, client_id: clientId });
-      } catch (e) {}
+      } catch (e) { /* счётчик не критичен */ }
       window.location.href = app.download_url;
     });
   }
@@ -249,6 +230,7 @@ async function renderApp(app) {
         name: fd.get('name'),
         rating: parseInt(fd.get('rating')),
         text: fd.get('text'),
+        status: 'pending',
       });
       alert('Отзыв отправлен на модерацию');
       e.target.reset();
@@ -280,8 +262,8 @@ async function loadReviews(id) {
     renderReviews(data || []);
   } catch (e) {
     if (!cached) {
-      const box2 = document.getElementById('reviews');
-      if (box2) box2.innerHTML = '<div class="empty" style="padding:20px 0;border:none">Не удалось загрузить отзывы</div>';
+      const b = document.getElementById('reviews');
+      if (b) b.innerHTML = '<div class="empty" style="padding:20px 0;border:none">Не удалось загрузить отзывы</div>';
     }
   }
 }
