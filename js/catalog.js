@@ -37,7 +37,7 @@ async function loadApps() {
 
   const { data, error } = await supabase
     .from('apps')
-    .select('id, name, slug, author, author_profile_id, icon_url, size_bytes, version, downloads, created_at')
+    .select('id, name, slug, author, author_profile_id, icon_url, size_bytes, version, downloads, created_at, app_categories(category_id)')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
@@ -45,29 +45,6 @@ async function loadApps() {
     grid.innerHTML = '<div class="empty">Ошибка загрузки</div>';
     return;
   }
-
-  const apps = data || [];
-
-  if (!apps.length) {
-    grid.innerHTML = '<div class="empty">В этом разделе пока пусто</div>';
-    return;
-  }
-
-  grid.innerHTML = apps.map(app => `
-    <a href="app.html?slug=${app.slug || app.id}" class="app-card">
-      <img class="icon" src="${app.icon_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'}" alt="" loading="lazy">
-      <div class="body">
-        <h3>${esc(app.name)}</h3>
-        <div class="author">${esc(app.author)}</div>
-        <div class="meta">
-          ${app.version ? `<span>v${esc(app.version)}</span>` : ''}
-          <span>${formatSize(app.size_bytes)}</span>
-          <span>${app.downloads} ↓</span>
-        </div>
-      </div>
-    </a>
-  `).join('');
-}
 
   let apps = data || [];
 
@@ -97,5 +74,7 @@ async function loadApps() {
     </a>
   `).join('');
 }
+
+init();
 
 init();
