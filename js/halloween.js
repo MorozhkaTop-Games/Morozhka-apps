@@ -4,7 +4,7 @@ function createLeafFall() {
   container.id = 'leaf-fall';
   document.body.appendChild(container);
 
-  const leaves = ['🍂', '🍁', '🌰', '🍃'];
+  const leaves = ['🍂', '🍁'];
   const count = window.innerWidth < 720 ? 8 : 15;
 
   for (let i = 0; i < count; i++) {
