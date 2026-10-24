@@ -58,31 +58,25 @@ async function init() {
       return;
     }
 
-    let cats = [];
-    try {
-      const catLinks = await dbSelect('app_categories',
-        'select=category_id,categories(name)&app_id=eq.' + app.id);
-      cats = (catLinks || []).map(ac => ac.categories?.name).filter(Boolean);
-    } catch (e) {}
+    // === ПАРАЛЛЕЛЬНО: категории, автор, рейтинг ===
+    const [catLinks, profiles, ratingData] = await Promise.all([
+      dbSelect('app_categories', 'select=category_id,categories(name)&app_id=eq.' + app.id).catch(() => []),
+      app.author_profile_id
+        ? dbSelect('profiles', 'select=slug,display_name&id=eq.' + app.author_profile_id + '&limit=1').catch(() => [])
+        : Promise.resolve([]),
+      dbRpc('get_app_rating', { p_app_id: app.id }).catch(() => ({ avg: 0, count: 0 })),
+    ]);
+
+    const cats = (catLinks || []).map(ac => ac.categories?.name).filter(Boolean);
 
     let authorSlug = null;
     let authorName = app.author;
-    if (app.author_profile_id) {
-      try {
-        const profiles = await dbSelect('profiles',
-          'select=slug,display_name&id=eq.' + app.author_profile_id + '&limit=1');
-        if (profiles.length) {
-          authorSlug = profiles[0].slug;
-          authorName = profiles[0].display_name || app.author;
-        }
-      } catch (e) {}
+    if (profiles && profiles.length) {
+      authorSlug = profiles[0].slug;
+      authorName = profiles[0].display_name || app.author;
     }
 
-    let rating = { avg: 0, count: 0 };
-    try {
-      const r = await dbRpc('get_app_rating', { p_app_id: app.id });
-      if (r) rating = r;
-    } catch (e) {}
+    const rating = ratingData || { avg: 0, count: 0 };
 
     document.title = app.name + ' — Morozhka Apps';
 
@@ -221,6 +215,7 @@ async function init() {
       }
     });
 
+    // Отзывы грузятся отдельно, не блокируют страницу
     loadReviews(app.id);
   } catch (e) {
     content.innerHTML = '<div class="empty">Не удалось загрузить приложение</div>';
