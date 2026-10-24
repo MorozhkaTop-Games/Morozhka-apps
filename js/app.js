@@ -1,4 +1,4 @@
-import { dbSelect, dbRpc } from './api.js';
+import { dbSelect, dbInsert, dbRpc } from './api.js';
 
 const content = document.getElementById('content');
 const params = new URLSearchParams(location.search);
@@ -28,6 +28,14 @@ function renderStars(avg) {
   return '★'.repeat(full) + (half ? '☆' : '') + '☆'.repeat(empty);
 }
 
+function uuid() {
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 if (!appId && !appSlug) {
   content.innerHTML = '<div class="empty">Приложение не найдено</div>';
 } else {
@@ -53,8 +61,7 @@ async function init() {
     let cats = [];
     try {
       const catLinks = await dbSelect('app_categories',
-        'select=category_id,categories(name)&app_id=eq.' + app.id
-      );
+        'select=category_id,categories(name)&app_id=eq.' + app.id);
       cats = (catLinks || []).map(ac => ac.categories?.name).filter(Boolean);
     } catch (e) {}
 
@@ -63,8 +70,7 @@ async function init() {
     if (app.author_profile_id) {
       try {
         const profiles = await dbSelect('profiles',
-          'select=slug,display_name&id=eq.' + app.author_profile_id + '&limit=1'
-        );
+          'select=slug,display_name&id=eq.' + app.author_profile_id + '&limit=1');
         if (profiles.length) {
           authorSlug = profiles[0].slug;
           authorName = profiles[0].display_name || app.author;
@@ -186,12 +192,12 @@ async function init() {
     const downloadBtn = document.getElementById('downloadBtn');
     if (downloadBtn) {
       downloadBtn.addEventListener('click', async () => {
-        let clientId = localStorage.getItem('morozhka_client_id');
-        if (!clientId) {
-          clientId = crypto.randomUUID();
-          localStorage.setItem('morozhka_client_id', clientId);
-        }
         try {
+          let clientId = localStorage.getItem('morozhka_client_id');
+          if (!clientId) {
+            clientId = uuid();
+            localStorage.setItem('morozhka_client_id', clientId);
+          }
           await dbRpc('increment_downloads_limited', { app_id: app.id, client_id: clientId });
         } catch (e) {}
         window.location.href = app.download_url;
@@ -202,18 +208,6 @@ async function init() {
       e.preventDefault();
       const fd = new FormData(e.target);
       try {
-        await fetch(SUPABASE_URL_REST(), {
-          // оставим через dbInsert
-        });
-      } catch (err) {}
-    });
-
-    // Проще: используем dbInsert
-    document.getElementById('reviewForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      try {
-        const { dbInsert } = await import('./api.js');
         await dbInsert('reviews', {
           app_id: app.id,
           name: fd.get('name'),
@@ -229,20 +223,15 @@ async function init() {
 
     loadReviews(app.id);
   } catch (e) {
-    content.innerHTML = '<div class="empty">Ошибка: ' + e.message + '</div>';
+    content.innerHTML = '<div class="empty">Не удалось загрузить приложение</div>';
   }
-}
-
-function SUPABASE_URL_REST() {
-  return 'https://tksbqddskldnaafevmnl.supabase.co';
 }
 
 async function loadReviews(id) {
   const box = document.getElementById('reviews');
   try {
     const data = await dbSelect('reviews',
-      'select=*&app_id=eq.' + id + '&status=eq.approved&order=created_at.desc'
-    );
+      'select=*&app_id=eq.' + id + '&status=eq.approved&order=created_at.desc');
     if (!data || !data.length) {
       box.innerHTML = '<div class="empty" style="padding:20px 0;border:none">Пока нет отзывов</div>';
       return;
@@ -258,6 +247,6 @@ async function loadReviews(id) {
       </div>
     `).join('');
   } catch (e) {
-    box.innerHTML = '<div style="color:red;padding:20px">Ошибка: ' + e.message + '</div>';
+    box.innerHTML = '<div class="empty" style="padding:20px 0;border:none">Не удалось загрузить отзывы</div>';
   }
 }
