@@ -37,6 +37,7 @@ async function init() {
     return;
   }
 
+  // Категории
   const { data: catLinks } = await supabase
     .from('app_categories')
     .select('category_id, categories ( name )')
@@ -46,6 +47,7 @@ async function init() {
     .map(ac => ac.categories?.name)
     .filter(Boolean);
 
+  // Автор
   let authorSlug = null;
   let authorName = app.author;
 
@@ -62,6 +64,10 @@ async function init() {
     }
   }
 
+  // Рейтинг
+  const { data: ratingData } = await supabase.rpc('get_app_rating', { p_app_id: app.id });
+  const rating = ratingData || { avg: 0, count: 0 };
+
   document.title = app.name + ' — Morozhka Apps';
 
   const authorHtml = authorSlug
@@ -69,6 +75,9 @@ async function init() {
     : esc(authorName);
 
   const screenshots = (app.screenshots || []).filter(Boolean);
+
+  // Звёзды
+  const stars = renderStars(rating.avg);
 
   content.innerHTML = `
     <div class="app-detail">
@@ -78,6 +87,11 @@ async function init() {
           <div style="flex:1;min-width:0">
             <h1>${esc(app.name)}</h1>
             <div class="author-line">Автор: ${authorHtml}</div>
+            <div style="margin:8px 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="color:var(--warning);font-size:15px;letter-spacing:2px">${stars}</span>
+              <span style="color:var(--text);font-weight:600">${rating.avg > 0 ? rating.avg.toFixed(1) : '—'}</span>
+              <span style="color:var(--muted);font-size:13px">(${rating.count} ${plural(rating.count, 'отзыв', 'отзыва', 'отзывов')})</span>
+            </div>
             <div class="pill-row">
               ${cats.map(c => `<span class="pill accent">${esc(c)}</span>`).join('')}
               ${app.version ? `<span class="pill">v${esc(app.version)}</span>` : ''}
@@ -151,6 +165,7 @@ async function init() {
             <div><span>Версия</span><span>${esc(app.version || '—')}</span></div>
             <div><span>Скачиваний</span><span>${app.downloads}</span></div>
             <div><span>Возраст</span><span>${esc(app.age_rating || '0+')}</span></div>
+            <div><span>Рейтинг</span><span>${rating.avg > 0 ? rating.avg.toFixed(1) + ' ★' : '—'}</span></div>
           </div>
         </div>
       </div>
@@ -211,4 +226,20 @@ async function loadReviews(id) {
       <div class="review-date">${formatDate(r.created_at)}</div>
     </div>
   `).join('');
+}
+
+// ===== УТИЛИТЫ =====
+function renderStars(avg) {
+  const full = Math.floor(avg);
+  const half = avg - full >= 0.5 ? 1 : 0;
+  const empty = 5 - full - half;
+  return '★'.repeat(full) + (half ? '☆' : '') + '☆'.repeat(empty);
+}
+
+function plural(n, one, few, many) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
 }
