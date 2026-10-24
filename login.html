@@ -3,54 +3,106 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Тест — Morozhka Apps</title>
+  <title>Вход — Morozhka Apps</title>
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body style="padding:40px;font-family:sans-serif;background:#1a1410;color:#f0e4d0">
-  <h1>Тест запроса к Supabase</h1>
-  <p id="log" style="font-size:14px;line-height:1.8;white-space:pre-wrap"></p>
+<body>
+  <header>
+    <div class="container">
+      <a href="index.html" class="brand">
+        <img class="brand-mark" src="favicon.png" alt="">
+        Morozhka <em>Apps</em>
+      </a>
+      <nav>
+        <a href="catalog.html">Каталог</a>
+        <a href="publish.html">Публикация</a>
+        <a href="account.html">Профиль</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:440px;padding:60px 24px 64px">
+    <div class="login-wrap" style="margin:0">
+      <h1>Вход</h1>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Логин</label>
+          <input type="text" name="login" required>
+        </div>
+        <div class="form-group">
+          <label>Пароль</label>
+          <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn" style="width:100%">Войти</button>
+        <p id="status" style="margin-top:14px;font-size:13px;text-align:center"></p>
+      </form>
+      <p style="margin-top:20px;text-align:center;font-size:13px;color:var(--muted)">
+        Нет аккаунта? <a href="signup.html">Зарегистрироваться</a>
+      </p>
+    </div>
+  </main>
+
+  <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
   <script>
-    const log = document.getElementById('log');
-    function write(s, color) {
-      log.innerHTML += '<div style="color:' + (color || '#f0e4d0') + '">' + s + '</div>';
-    }
-
-    const URL = 'https://tksbqddskldnaafevmnl.supabase.co/rest/v1/apps?select=id&limit=1';
+    const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
     const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
-    write('1. Старт');
-    write('2. Делаю fetch через 3 секунды…');
+    const form = document.getElementById('loginForm');
+    const status = document.getElementById('status');
 
-    setTimeout(() => {
-      write('3. fetch начался');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      status.textContent = 'Вход…';
+      status.style.color = 'gray';
 
-      const controller = new AbortController();
-      const timer = setTimeout(() => {
-        controller.abort();
-        write('❌ Таймаут 10 сек — fetch не вернулся', 'red');
-      }, 10000);
+      try {
+        const res = await Promise.race([
+          fetch(SUPABASE_URL + '/rest/v1/rpc/login_user', {
+            method: 'POST',
+            headers: {
+              'apikey': KEY,
+              'Authorization': 'Bearer ' + KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              p_login: fd.get('login'),
+              p_password: fd.get('password'),
+            }),
+          }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('Таймаут 15 сек')), 15000)),
+        ]);
 
-      fetch(URL, {
-        headers: {
-          'apikey': KEY,
-          'Authorization': 'Bearer ' + KEY,
-        },
-        signal: controller.signal,
-      })
-        .then(r => {
-          clearTimeout(timer);
-          write('✅ fetch вернулся, статус: ' + r.status, 'green');
-          return r.json();
-        })
-        .then(data => {
-          write('✅ Данные: ' + JSON.stringify(data).slice(0, 200), 'green');
-        })
-        .catch(err => {
-          clearTimeout(timer);
-          write('❌ Ошибка: ' + err.message, 'red');
-        });
-    }, 3000);
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
+        }
+
+        const data = await res.json();
+
+        if (data.error) {
+          status.textContent = data.error;
+          status.style.color = 'red';
+          return;
+        }
+
+        localStorage.setItem('morozhka_session', JSON.stringify({
+          account_id: data.account_id,
+          profile_id: data.profile_id,
+          display_name: data.display_name,
+          slug: data.slug,
+        }));
+
+        status.textContent = 'Успех, перехожу…';
+        status.style.color = 'green';
+        location.href = 'account.html';
+      } catch (err) {
+        status.textContent = err.message;
+        status.style.color = 'red';
+      }
+    });
   </script>
 </body>
 </html>
