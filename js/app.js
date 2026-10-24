@@ -1,6 +1,3 @@
-// было: два submit-обработчика (мусорный первым), crypto.randomUUID без fallback,
-//       increment_downloads_limited в try, dbInsert('reviews') без status
-// стало: один submit, fallback uuid, increment не блокирует переход, status: 'pending'
 import { dbSelect, dbInsert, dbRpc } from './api.js';
 
 const content = document.getElementById('content');
