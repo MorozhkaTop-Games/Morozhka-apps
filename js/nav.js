@@ -1,10 +1,8 @@
-import { getSession } from './session.js';
+import { getSession } from './session.js?v=2';
 
 document.addEventListener('DOMContentLoaded', () => {
   const link = document.querySelector('nav a[href="account.html"]');
-  if (!link) {
-    console.warn('nav.js: ссылка account.html не найдена в <nav>');
-  } else {
+  if (link) {
     if (getSession()) {
       link.textContent = 'Профиль';
       link.href = 'account.html';
