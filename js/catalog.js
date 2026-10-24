@@ -37,12 +37,12 @@ async function loadApps() {
 
   const { data, error } = await supabase
     .from('apps')
-    .select('id, name, slug, author, author_profile_id, icon_url, size_bytes, version, downloads, created_at, app_categories(category_id)')
+    .select('id, name, slug, author, author_profile_id, icon_url, size_bytes, version, downloads, created_at, download_url, app_categories(category_id)')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
   if (error) {
-    grid.innerHTML = '<div class="empty">Ошибка загрузки</div>';
+    grid.innerHTML = '<div class="empty">Ошибка: ' + error.message + '</div>';
     return;
   }
 
@@ -69,12 +69,11 @@ async function loadApps() {
           ${app.version ? `<span>v${esc(app.version)}</span>` : ''}
           <span>${formatSize(app.size_bytes)}</span>
           <span>${app.downloads} ↓</span>
+          ${!app.download_url ? `<span style="color:var(--warning)">Скоро</span>` : ''}
         </div>
       </div>
     </a>
   `).join('');
 }
-
-init();
 
 init();
