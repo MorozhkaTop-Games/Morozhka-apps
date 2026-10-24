@@ -2,70 +2,69 @@ import { supabase, formatSize, esc } from './config.js';
 
 const grid = document.getElementById('apps');
 const filtersBox = document.getElementById('filters');
-let currentCat = null;
-let categories = [];
 
-// Сразу пишем, что скрипт запустился
-grid.innerHTML = '<div class="empty">Скрипт запустился, загружаю…</div>';
+if (!grid) {
+  document.body.innerHTML = '<div style="color:red;padding:20px">ОШИБКА: #apps не найден</div>';
+  throw new Error('no #apps');
+}
+
+grid.innerHTML = '<div class="empty">1. Скрипт запустился</div>';
+
+// Таймаут-обёртка
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Таймаут: ' + label + ' (' + ms + ' мс)')), ms)
+    )
+  ]);
+}
 
 async function init() {
   try {
-    const { data: cats, error: catErr } = await supabase
-      .from('categories')
-      .select('*')
-      .order('sort_order');
+    grid.innerHTML = '<div class="empty">2. Загружаю категории…</div>';
 
-    if (catErr) {
-      filtersBox.innerHTML = '<div style="color:red;padding:10px;font-size:12px">Ошибка категорий: ' + catErr.message + '</div>';
+    const catsResult = await withTimeout(
+      supabase.from('categories').select('*').order('sort_order'),
+      10000,
+      'категории'
+    );
+
+    if (catsResult.error) {
+      filtersBox.innerHTML = '<div style="color:red;padding:10px;font-size:12px">Ошибка категорий: ' + catsResult.error.message + '</div>';
     } else {
-      categories = cats || [];
+      const cats = catsResult.data || [];
       filtersBox.innerHTML = `
         <button class="filter-btn active" data-cat="">Все</button>
-        ${categories.map(c => `<button class="filter-btn" data-cat="${c.id}">${esc(c.name)}</button>`).join('')}
+        ${cats.map(c => `<button class="filter-btn" data-cat="${c.id}">${esc(c.name)}</button>`).join('')}
       `;
-      filtersBox.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          filtersBox.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          currentCat = btn.dataset.cat || null;
-          loadApps();
-        });
-      });
     }
 
-    loadApps();
-  } catch (e) {
-    grid.innerHTML = '<div style="color:red;padding:20px;font-size:14px">КРИТИЧЕСКАЯ ОШИБКА в init: ' + e.message + '</div>';
-  }
-}
+    grid.innerHTML = '<div class="empty">3. Загружаю приложения…</div>';
 
-async function loadApps() {
-  grid.innerHTML = '<div class="empty">Загружаю приложения…</div>';
+    const appsResult = await withTimeout(
+      supabase
+        .from('apps')
+        .select('id, name, slug, author, author_profile_id, icon_url, size_bytes, version, downloads, created_at, download_url')
+        .eq('status', 'published')
+        .order('created_at', { ascending: false }),
+      10000,
+      'приложения'
+    );
 
-  try {
-    const { data, error } = await supabase
-      .from('apps')
-      .select('id, name, slug, author, author_profile_id, icon_url, size_bytes, version, downloads, created_at, download_url, app_categories(category_id)')
-      .eq('status', 'published')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      grid.innerHTML = '<div style="color:red;padding:20px;font-size:14px">Ошибка apps: ' + error.message + '</div>';
+    if (appsResult.error) {
+      grid.innerHTML = '<div style="color:red;padding:20px;font-size:14px">Ошибка приложений: ' + appsResult.error.message + '</div>';
       return;
     }
 
-    let apps = data || [];
-
-    if (currentCat) {
-      apps = apps.filter(app =>
-        (app.app_categories || []).some(ac => ac.category_id === currentCat)
-      );
-    }
+    const apps = appsResult.data || [];
 
     if (!apps.length) {
-      grid.innerHTML = '<div class="empty">В этом разделе пока пусто (приложений: 0)</div>';
+      grid.innerHTML = '<div class="empty">4. Приложений 0</div>';
       return;
     }
+
+    grid.innerHTML = '<div class="empty">4. Приложений: ' + apps.length + '</div>';
 
     grid.innerHTML = apps.map(app => `
       <a href="app.html?slug=${app.slug || app.id}" class="app-card">
@@ -83,7 +82,8 @@ async function loadApps() {
       </a>
     `).join('');
   } catch (e) {
-    grid.innerHTML = '<div style="color:red;padding:20px;font-size:14px">КРИТИЧЕСКАЯ ОШИБКА в loadApps: ' + e.message + '</div>';
+    grid.innerHTML = '<div style="color:red;padding:20px;font-size:14px;font-weight:700">ОШИБКА: ' + e.message + '</div>';
+    console.error(e);
   }
 }
 
