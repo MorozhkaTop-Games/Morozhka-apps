@@ -18,7 +18,7 @@ async function init() {
   } else {
     query = query.eq('id', profileId);
   }
-  const { data: profile, error } = await query.single();
+  const { data: profile, error } = await query.maybeSingle();
 
   if (error || !profile) {
     content.innerHTML = '<div class="empty">Профиль не найден</div>';
@@ -33,12 +33,13 @@ async function init() {
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
+  const iconHtml = profile.icon_url
+    ? `<img src="${esc(profile.icon_url)}" alt="">`
+    : `<div style="width:96px;height:96px;border-radius:50%;background:var(--surface-2);border:2px dashed var(--border-2);display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0">🎃</div>`;
+
   content.innerHTML = `
     <div class="profile-header">
-      <img src="${profile.icon_url || ''}" alt="">
-      ${profile.icon_url
-  ? `<img src="${esc(profile.icon_url)}" alt="">`
-  : `<div style="width:96px;height:96px;border-radius:50%;background:var(--surface-2);border:2px dashed var(--border-2);display:flex;align-items:center;justify-content:center;font-size:40px">🎃</div>`}
+      ${iconHtml}
       <div>
         <h1>${esc(profile.display_name)}</h1>
         <div class="slug">@${esc(profile.slug)}</div>
@@ -51,7 +52,7 @@ async function init() {
     <div class="apps-grid">
       ${(apps && apps.length) ? apps.map(a => `
         <a href="app.html?slug=${a.slug || a.id}" class="app-card">
-          <img class="icon" src="${a.icon_url || ''}" alt="">
+          <img class="icon" src="${a.icon_url || ''}" alt="" loading="lazy">
           <div class="body">
             <h3>${esc(a.name)}</h3>
             <div class="meta">
