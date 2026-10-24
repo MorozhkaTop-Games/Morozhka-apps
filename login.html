@@ -47,40 +47,74 @@
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
   <script>
+    const status = document.getElementById('status');
+
+    // 1. Проверяем, что supabase загрузился
+    if (!window.supabase) {
+      status.textContent = 'ОШИБКА: библиотека Supabase не загрузилась';
+      status.style.color = 'red';
+      throw new Error('no supabase');
+    }
+    status.textContent = '1. Библиотека загружена';
+    status.style.color = 'gray';
+
     const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    status.textContent = '2. Клиент создан. Готов к входу';
+    status.style.color = 'gray';
+
     const form = document.getElementById('loginForm');
-    const status = document.getElementById('status');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
-      status.textContent = 'Вход…';
 
-      const { data, error } = await client.rpc('login_user', {
-        p_login: fd.get('login'),
-        p_password: fd.get('password'),
-      });
+      status.textContent = '3. Отправляю запрос в Supabase…';
+      status.style.color = 'gray';
 
-      if (error) {
-        status.textContent = 'Ошибка: ' + error.message;
-        return;
+      // Таймаут 15 секунд
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Таймаут 15 секунд — Supabase не ответил')), 15000)
+      );
+
+      try {
+        const result = await Promise.race([
+          client.rpc('login_user', {
+            p_login: fd.get('login'),
+            p_password: fd.get('password'),
+          }),
+          timeout,
+        ]);
+
+        if (result.error) {
+          status.textContent = '4. Ошибка Supabase: ' + result.error.message;
+          status.style.color = 'red';
+          return;
+        }
+
+        if (result.data.error) {
+          status.textContent = '4. Отказ: ' + result.data.error;
+          status.style.color = 'red';
+          return;
+        }
+
+        status.textContent = '5. Успех! Перехожу…';
+        status.style.color = 'green';
+
+        localStorage.setItem('morozhka_session', JSON.stringify({
+          account_id: result.data.account_id,
+          profile_id: result.data.profile_id,
+          display_name: result.data.display_name,
+          slug: result.data.slug,
+        }));
+
+        location.href = 'account.html';
+      } catch (err) {
+        status.textContent = '4. ' + err.message;
+        status.style.color = 'red';
       }
-      if (data.error) {
-        status.textContent = data.error;
-        return;
-      }
-
-      localStorage.setItem('morozhka_session', JSON.stringify({
-        account_id: data.account_id,
-        profile_id: data.profile_id,
-        display_name: data.display_name,
-        slug: data.slug,
-      }));
-
-      location.href = 'account.html';
     });
   </script>
 </body>
