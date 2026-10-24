@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Загрузка приложения — Morozhka Apps</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <a href="index.html" class="brand">
+        <img class="brand-mark" src="favicon.png" alt="">
+        Morozhka <span>Apps</span>
+      </a>
+      <nav>
+        <a href="catalog.html">Каталог</a>
+        <a href="upload.html" class="active">Загрузить</a>
+        <a href="account.html">Профиль</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:640px;padding:40px 24px 64px">
+    <div class="page-header" style="border:none">
+      <h1>Загрузить файлы</h1>
+      <p>Иконка и скриншоты — в облако. APK — через GitHub Releases (ссылка ниже).</p>
+    </div>
+
+    <form id="uploadForm">
+      <!-- ИКОНКА -->
+      <div class="form-group">
+        <label>Иконка приложения (PNG, до 2 МБ)</label>
+        <div class="file-input-wrap">
+          <span class="file-input-icon">🎃</span>
+          <div class="file-input-text">
+            <strong>Нажмите или перетащите</strong><br>
+            PNG, JPG, WebP
+          </div>
+          <input type="file" accept="image/*" id="iconInput">
+          <div class="file-input-name" id="iconName"></div>
+        </div>
+        <div class="hint" id="iconHint"></div>
+      </div>
+
+      <!-- СКРИНШОТЫ -->
+      <div class="form-group">
+        <label>Скриншоты (до 5 штук, до 10 МБ каждый)</label>
+        <div class="file-input-wrap">
+          <span class="file-input-icon">🖼️</span>
+          <div class="file-input-text">
+            <strong>Нажмите или перетащите</strong><br>
+            PNG, JPG, WebP
+          </div>
+          <input type="file" accept="image/*" multiple id="screensInput">
+          <div class="file-input-name" id="screensName"></div>
+        </div>
+        <div class="hint" id="screensHint"></div>
+      </div>
+
+      <button type="submit" class="btn" style="width:100%">Загрузить в облако</button>
+      <p id="status" style="margin-top:16px;text-align:center;font-size:13px"></p>
+    </form>
+
+    <div style="margin-top:32px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--muted);line-height:1.7">
+      <strong style="color:var(--text);display:block;margin-bottom:8px">📦 APK-файл</strong>
+      APK загружается <strong style="color:var(--accent)">не здесь</strong>, а через <strong>GitHub Releases</strong>:
+      <ol style="padding-left:20px;margin-top:8px">
+        <li>Открой <a href="https://github.com/morozhkatop-games/morozhka-files/releases" target="_blank">github.com/.../morozhka-files/releases</a></li>
+        <li>Нажми <strong>Create a new release</strong></li>
+        <li>Загрузи APK как бинарный файл</li>
+        <li>Скопируй ссылку на файл</li>
+        <li>Вставь её в <a href="publish.html">форму публикации</a> или в админку</li>
+      </ol>
+      <div style="margin-top:12px">Почему так? <strong>GitHub Releases</strong> — бесплатно, <strong>2 ГБ на файл</strong>, без ограничений. Supabase Storage — только <strong>1 ГБ на всё</strong>.</div>
+    </div>
+  </main>
+
+  <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
+
+  <script type="module">
+    import { supabase } from './js/config.js';
+    import { getSession } from './js/session.js';
+
+    const form = document.getElementById('uploadForm');
+    const status = document.getElementById('status');
+    const session = getSession();
+
+    // Показать имя выбранного файла
+    function bindName(inputId, nameId, multiple = false) {
+      const input = document.getElementById(inputId);
+      const name = document.getElementById(nameId);
+      input?.addEventListener('change', () => {
+        if (!input.files.length) { name.textContent = ''; return; }
+        name.textContent = multiple
+          ? Array.from(input.files).map(f => f.name).join(', ')
+          : input.files[0].name;
+      });
+    }
+    bindName('iconInput', 'iconName');
+    bindName('screensInput', 'screensName', true);
+
+    // Drag & drop
+    document.querySelectorAll('.file-input-wrap').forEach(wrap => {
+      ['dragenter', 'dragover'].forEach(ev => {
+        wrap.addEventListener(ev, (e) => { e.preventDefault(); wrap.classList.add('drag'); });
+      });
+      ['dragleave', 'drop'].forEach(ev => {
+        wrap.addEventListener(ev, () => wrap.classList.remove('drag'));
+      });
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!session) {
+        status.textContent = 'Войдите, чтобы загружать файлы';
+        status.style.color = 'var(--danger)';
+        return;
+      }
+
+      const iconFile = document.getElementById('iconInput').files[0];
+      const screenFiles = document.getElementById('screensInput').files;
+
+      if (!iconFile && !screenFiles.length) {
+        status.textContent = 'Выберите хотя бы один файл';
+        status.style.color = 'var(--danger)';
+        return;
+      }
+
+      status.textContent = 'Загрузка…';
+      status.style.color = 'var(--muted)';
+
+      const results = { icon_url: null, screenshots: [] };
+      const userId = session.account_id;
+
+      try {
+        if (iconFile) {
+          if (iconFile.size > 2 * 1024 * 1024) throw new Error('Иконка больше 2 МБ');
+          const ext = iconFile.name.split('.').pop();
+          const path = `${userId}/icon-${Date.now()}.${ext}`;
+          const { error } = await supabase.storage.from('app-files').upload(path, iconFile);
+          if (error) throw error;
+          const { data } = supabase.storage.from('app-files').getPublicUrl(path);
+          results.icon_url = data.publicUrl;
+          document.getElementById('iconHint').innerHTML = `✅ <a href="${results.icon_url}" target="_blank">Открыть</a>`;
+          document.getElementById('iconHint').style.color = 'var(--success)';
+        }
+
+        for (const file of screenFiles) {
+          if (file.size > 10 * 1024 * 1024) continue;
+          const ext = file.name.split('.').pop();
+          const path = `${userId}/screen-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+          const { error } = await supabase.storage.from('app-screenshots').upload(path, file);
+          if (error) continue;
+          const { data } = supabase.storage.from('app-screenshots').getPublicUrl(path);
+          results.screenshots.push(data.publicUrl);
+        }
+
+        document.getElementById('screensHint').innerHTML = `✅ Загружено: ${results.screenshots.length} шт.`;
+        document.getElementById('screensHint').style.color = 'var(--success)';
+
+        status.innerHTML = `
+          <div style="color:var(--success);margin-bottom:12px;font-weight:600">✅ Готово!</div>
+          <div style="font-size:12px;color:var(--muted);word-break:break-all;text-align:left;background:var(--surface);padding:12px;border-radius:6px">
+            ${results.icon_url ? `<div><strong>Иконка:</strong><br>${results.icon_url}</div>` : ''}
+            ${results.screenshots.length ? `<div style="margin-top:8px"><strong>Скриншоты:</strong><br>${results.screenshots.map(u => u).join('<br>')}</div>` : ''}
+          </div>
+          <div style="margin-top:16px;font-size:12px;color:var(--muted)">
+            Скопируйте ссылки и отправьте заявку через <a href="publish.html">страницу публикации</a>.
+          </div>
+        `;
+        status.style.color = 'var(--text)';
+      } catch (err) {
+        status.textContent = 'Ошибка: ' + err.message;
+        status.style.color = 'var(--danger)';
+      }
+    });
+  </script>
+  <script type="module" src="js/nav.js"></script>
+  <script type="module" src="js/halloween.js"></script>
+</body>
+</html>
