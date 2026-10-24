@@ -1,4 +1,4 @@
-import { supabase, formatSize, formatDate, esc } from './config.js';
+import { supabase, formatSize, formatDate, esc } from './config.js?v=2';
 
 const content = document.getElementById('content');
 const params = new URLSearchParams(location.search);
@@ -13,12 +13,8 @@ if (!appId && !appSlug) {
 
 async function init() {
   let query = supabase.from('apps').select('*');
-
-  if (appId) {
-    query = query.eq('id', appId);
-  } else {
-    query = query.eq('slug', appSlug);
-  }
+  if (appId) query = query.eq('id', appId);
+  else query = query.eq('slug', appSlug);
 
   const { data: app, error } = await query.maybeSingle();
 
@@ -26,28 +22,22 @@ async function init() {
     content.innerHTML = '<div class="empty">Ошибка: ' + error.message + '</div>';
     return;
   }
-
   if (!app) {
     content.innerHTML = '<div class="empty">Приложение не найдено в базе</div>';
     return;
   }
-
   if (app.status !== 'published') {
-    content.innerHTML = '<div class="empty">Приложение скрыто (status: ' + app.status + ')</div>';
+    content.innerHTML = '<div class="empty">Приложение скрыто</div>';
     return;
   }
 
-  // Категории
   const { data: catLinks } = await supabase
     .from('app_categories')
     .select('category_id, categories ( name )')
     .eq('app_id', app.id);
 
-  const cats = (catLinks || [])
-    .map(ac => ac.categories?.name)
-    .filter(Boolean);
+  const cats = (catLinks || []).map(ac => ac.categories?.name).filter(Boolean);
 
-  // Автор
   let authorSlug = null;
   let authorName = app.author;
 
@@ -57,16 +47,17 @@ async function init() {
       .select('slug, display_name')
       .eq('id', app.author_profile_id)
       .maybeSingle();
-
     if (profile) {
       authorSlug = profile.slug;
       authorName = profile.display_name || app.author;
     }
   }
 
-  // Рейтинг
-  const { data: ratingData } = await supabase.rpc('get_app_rating', { p_app_id: app.id });
-  const rating = ratingData || { avg: 0, count: 0 };
+  let rating = { avg: 0, count: 0 };
+  try {
+    const { data: ratingData } = await supabase.rpc('get_app_rating', { p_app_id: app.id });
+    if (ratingData) rating = ratingData;
+  } catch (e) {}
 
   document.title = app.name + ' — Morozhka Apps';
 
@@ -75,7 +66,6 @@ async function init() {
     : esc(authorName);
 
   const screenshots = (app.screenshots || []).filter(Boolean);
-  const stars = renderStars(rating.avg);
   const hasDownload = !!app.download_url;
 
   content.innerHTML = `
@@ -87,9 +77,9 @@ async function init() {
             <h1>${esc(app.name)}</h1>
             <div class="author-line">Автор: ${authorHtml}</div>
             <div style="margin:8px 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span style="color:var(--warning);font-size:15px;letter-spacing:2px">${stars}</span>
+              <span style="color:var(--warning);font-size:15px;letter-spacing:2px">${renderStars(rating.avg)}</span>
               <span style="color:var(--text);font-weight:600">${rating.avg > 0 ? rating.avg.toFixed(1) : '—'}</span>
-              <span style="color:var(--muted);font-size:13px">(${rating.count} ${plural(rating.count, 'отзыв', 'отзыва', 'отзывов')})</span>
+              <span style="color:var(--muted);font-size:13px">(${rating.count} отзывов)</span>
             </div>
             <div class="pill-row">
               ${cats.map(c => `<span class="pill accent">${esc(c)}</span>`).join('')}
@@ -122,7 +112,7 @@ async function init() {
 
         <div class="section">
           <div class="section-title">Установка</div>
-          <p>${esc(app.install_instructions || 'Скачайте APK, откройте файл и разрешите установку из неизвестных источников в настройках Android.')}</p>
+          <p>${esc(app.install_instructions || 'Скачайте APK, откройте файл и разрешите установку из неизвестных источников.')}</p>
         </div>
 
         <div class="section">
@@ -158,12 +148,10 @@ async function init() {
 
       <div>
         <div class="download-box">
-          ${hasDownload ? `
-            <button class="download-btn" id="downloadBtn">Скачать</button>
-          ` : `
-            <button class="download-btn download-btn-soon" disabled>Скоро</button>
-            <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:8px">Приложение ещё не готово</div>
-          `}
+          ${hasDownload
+            ? `<button class="download-btn" id="downloadBtn">Скачать</button>`
+            : `<button class="download-btn download-btn-soon" disabled>Скоро</button>
+               <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:8px">Приложение ещё не готово</div>`}
           <div class="size">${formatSize(app.size_bytes)}</div>
           <div class="download-meta">
             <div><span>Версия</span><span>${esc(app.version || '—')}</span></div>
@@ -184,14 +172,9 @@ async function init() {
         clientId = crypto.randomUUID();
         localStorage.setItem('morozhka_client_id', clientId);
       }
-
       try {
-        await supabase.rpc('increment_downloads_limited', {
-          app_id: app.id,
-          client_id: clientId,
-        });
+        await supabase.rpc('increment_downloads_limited', { app_id: app.id, client_id: clientId });
       } catch (e) {}
-
       window.location.href = app.download_url;
     });
   }
@@ -235,18 +218,9 @@ async function loadReviews(id) {
   `).join('');
 }
 
-// ===== УТИЛИТЫ =====
 function renderStars(avg) {
   const full = Math.floor(avg);
   const half = avg - full >= 0.5 ? 1 : 0;
   const empty = 5 - full - half;
   return '★'.repeat(full) + (half ? '☆' : '') + '☆'.repeat(empty);
-}
-
-function plural(n, one, few, many) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
 }
