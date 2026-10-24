@@ -65,7 +65,7 @@ async function loadApps() {
 
   grid.innerHTML = apps.map(app => `
     <a href="app.html?slug=${app.slug || app.id}" class="app-card">
-      <img class="icon" src="${app.icon_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'}" alt="">
+      <img class="icon" src="${app.icon_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'}" alt="" loading="lazy">
       <div class="body">
         <h3>${esc(app.name)}</h3>
         <div class="author">${esc(app.author)}</div>
