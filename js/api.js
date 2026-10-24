@@ -12,14 +12,18 @@ function fetchOnce(url, options, ms) {
   ]);
 }
 
-async function fetchWithRetry(url, options = {}, ms = 5000, retries = 3) {
+// 5 попыток: 1с, 2с, 4с, 6с, 8с
+async function fetchWithRetry(url, options = {}) {
+  const delays = [1000, 2000, 4000, 6000, 8000];
   let lastErr;
-  for (let i = 0; i < retries; i++) {
+  for (let i = 0; i < delays.length; i++) {
     try {
-      return await fetchOnce(url, options, ms);
+      return await fetchOnce(url, options, delays[i]);
     } catch (err) {
       lastErr = err;
-      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+      if (i < delays.length - 1) {
+        await new Promise(r => setTimeout(r, 300));
+      }
     }
   }
   throw lastErr;
@@ -82,7 +86,7 @@ export async function storageUpload(bucket, path, file) {
     method: 'POST',
     headers: { 'x-upsert': 'true' },
     body: file,
-  }, 20000, 2);
+  });
   if (!res.ok) {
     const t = await res.text();
     throw new Error('Upload HTTP ' + res.status + ': ' + t.slice(0, 200));
