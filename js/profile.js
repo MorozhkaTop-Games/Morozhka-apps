@@ -1,4 +1,4 @@
-import { supabase, formatSize, esc } from './config.js';
+import { supabase, formatSize, esc } from './config.js?v=2';
 
 const content = document.getElementById('content');
 const params = new URLSearchParams(location.search);
@@ -13,11 +13,9 @@ if (!profileId && !profileSlug) {
 
 async function init() {
   let query = supabase.from('profiles').select('*');
-  if (profileSlug) {
-    query = query.eq('slug', profileSlug);
-  } else {
-    query = query.eq('id', profileId);
-  }
+  if (profileSlug) query = query.eq('slug', profileSlug);
+  else query = query.eq('id', profileId);
+
   const { data: profile, error } = await query.maybeSingle();
 
   if (error || !profile) {
