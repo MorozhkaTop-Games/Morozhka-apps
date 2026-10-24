@@ -1,5 +1,3 @@
-// было: при ошибке без кеша показывался e.message ("timeout")
-// стало: человеческий текст
 import { dbSelect } from './api.js';
 
 const grid = document.getElementById('apps');
