@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тест</title>
+</head>
+<body style="padding:20px;font-family:sans-serif;background:#1a1410;color:#f0e4d0;font-size:16px;line-height:1.8">
+  <h1>Тест модулей и fetch</h1>
+  <div id="out">Загрузка…</div>
+
+  <script type="module">
+    const out = document.getElementById('out');
+    out.textContent = '1. Модуль запустился';
+
+    // Тест: import из локального файла
+    try {
+      const mod = await import('./js/api.js');
+      out.textContent = '2. api.js загружен';
+    } catch (e) {
+      out.textContent = '2. ОШИБКА import: ' + e.message;
+      out.style.color = 'red';
+      throw e;
+    }
+
+    // Тест: dbSelect
+    try {
+      const { dbSelect } = await import('./js/api.js');
+      out.textContent = '3. Делаю запрос к Supabase…';
+      const apps = await dbSelect('apps', 'select=id&limit=1');
+      out.textContent = '4. ✅ Успех: ' + apps.length + ' приложений';
+      out.style.color = 'green';
+    } catch (e) {
+      out.textContent = '4. ❌ ОШИБКА dbSelect: ' + e.message;
+      out.style.color = 'red';
+    }
+  </script>
+</body>
+</html>
