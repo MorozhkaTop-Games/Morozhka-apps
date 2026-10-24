@@ -1,5 +1,3 @@
-// было: withApiKey (?apikey=...), fetchWithRetry 10 попыток ~30 с
-// стало: ключ ТОЛЬКО в заголовках, один fetch с AbortController, таймаут 15 с, без ретраев
 const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
 const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
