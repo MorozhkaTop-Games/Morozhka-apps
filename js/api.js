@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
-const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzY2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
 function withApiKey(url) {
   return url + (url.includes('?') ? '&' : '?') + 'apikey=' + KEY;
@@ -12,9 +12,8 @@ function fetchOnce(url, options, ms) {
   ]);
 }
 
-// 5 попыток: 1с, 2с, 4с, 6с, 8с
 async function fetchWithRetry(url, options = {}) {
-  const delays = [1000, 2000, 4000, 6000, 8000];
+  const delays = [1000, 1000, 2000, 2000, 3000, 3000, 4000, 4000, 5000, 5000];
   let lastErr;
   for (let i = 0; i < delays.length; i++) {
     try {
@@ -22,7 +21,7 @@ async function fetchWithRetry(url, options = {}) {
     } catch (err) {
       lastErr = err;
       if (i < delays.length - 1) {
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 200));
       }
     }
   }
