@@ -1,4 +1,3 @@
-// Мини-клиент Supabase на прямом fetch. Без supabase-js.
 const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
@@ -8,20 +7,39 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-// Таймаут 15 секунд на любой запрос
-function withTimeout(promise, ms = 15000) {
+// Один запрос с таймаутом
+function fetchOnce(url, options, ms) {
   return Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Таймаут ' + ms + ' мс — Supabase не ответил')), ms)
-    )
+    fetch(url, options),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
   ]);
 }
 
-// SELECT: /rest/v1/{table}?{query}
+// Запрос с повторами. Пробует 3 раза по 5 секунд.
+async function fetchWithRetry(url, options = {}, ms = 5000, retries = 3) {
+  let lastErr;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetchOnce(url, options, ms);
+      if (!res.ok && res.status >= 500) {
+        // 5xx — серверная ошибка, попробуем ещё
+        lastErr = new Error('HTTP ' + res.status);
+        await new Promise(r => setTimeout(r, 500 * (i + 1)));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      lastErr = err;
+      // подождём перед повтором
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function dbSelect(table, query = '') {
   const url = SUPABASE_URL + '/rest/v1/' + table + (query ? '?' + query : '');
-  const res = await withTimeout(fetch(url, { headers: HEADERS }));
+  const res = await fetchWithRetry(url, { headers: HEADERS });
   if (!res.ok) {
     const text = await res.text();
     throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200));
@@ -29,14 +47,13 @@ export async function dbSelect(table, query = '') {
   return await res.json();
 }
 
-// INSERT: POST /rest/v1/{table}
 export async function dbInsert(table, row) {
   const url = SUPABASE_URL + '/rest/v1/' + table;
-  const res = await withTimeout(fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: { ...HEADERS, 'Prefer': 'return=representation' },
     body: JSON.stringify(row),
-  }));
+  });
   if (!res.ok) {
     const text = await res.text();
     throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200));
@@ -44,28 +61,26 @@ export async function dbInsert(table, row) {
   return await res.json();
 }
 
-// UPDATE: PATCH /rest/v1/{table}?{filter}
 export async function dbUpdate(table, filter, patch) {
   const url = SUPABASE_URL + '/rest/v1/' + table + '?' + filter;
-  const res = await withTimeout(fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'PATCH',
     headers: { ...HEADERS, 'Prefer': 'return=minimal' },
     body: JSON.stringify(patch),
-  }));
+  });
   if (!res.ok) {
     const text = await res.text();
     throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200));
   }
 }
 
-// RPC: POST /rest/v1/rpc/{fn}
 export async function dbRpc(fn, args = {}) {
   const url = SUPABASE_URL + '/rest/v1/rpc/' + fn;
-  const res = await withTimeout(fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: HEADERS,
     body: JSON.stringify(args),
-  }));
+  });
   if (!res.ok) {
     const text = await res.text();
     throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200));
@@ -73,10 +88,9 @@ export async function dbRpc(fn, args = {}) {
   return await res.json();
 }
 
-// STORAGE: загрузка файла
 export async function storageUpload(bucket, path, file) {
   const url = SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path;
-  const res = await withTimeout(fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: {
       'apikey': SUPABASE_ANON_KEY,
@@ -84,7 +98,7 @@ export async function storageUpload(bucket, path, file) {
       'x-upsert': 'true',
     },
     body: file,
-  }), 60000);
+  }, 20000, 2);
   if (!res.ok) {
     const text = await res.text();
     throw new Error('Upload HTTP ' + res.status + ': ' + text.slice(0, 200));
