@@ -1,6 +1,9 @@
 const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
 const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
+// Прокси: обходит прямой доступ браузера к supabase.co
+const PROXY = 'https://corsproxy.io/?url=';
+
 const HEADERS = {
   'apikey': KEY,
   'Authorization': 'Bearer ' + KEY,
@@ -8,7 +11,12 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-async function fetchWithTimeout(url, options = {}, ms = 15000) {
+function buildUrl(path) {
+  // path — это '/rest/v1/apps?...' или '/storage/v1/...'
+  return PROXY + encodeURIComponent(SUPABASE_URL + path);
+}
+
+async function fetchWithTimeout(url, options = {}, ms = 20000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
@@ -23,8 +31,8 @@ async function fetchWithTimeout(url, options = {}, ms = 15000) {
 }
 
 export async function dbSelect(table, query = '') {
-  const url = SUPABASE_URL + '/rest/v1/' + table + (query ? '?' + query : '');
-  const res = await fetchWithTimeout(url);
+  const path = '/rest/v1/' + table + (query ? '?' + query : '');
+  const res = await fetchWithTimeout(buildUrl(path));
   if (!res.ok) {
     const t = await res.text();
     throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
@@ -33,8 +41,8 @@ export async function dbSelect(table, query = '') {
 }
 
 export async function dbInsert(table, row) {
-  const url = SUPABASE_URL + '/rest/v1/' + table;
-  const res = await fetchWithTimeout(url, {
+  const path = '/rest/v1/' + table;
+  const res = await fetchWithTimeout(buildUrl(path), {
     method: 'POST',
     headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify(row),
@@ -47,8 +55,8 @@ export async function dbInsert(table, row) {
 }
 
 export async function dbUpdate(table, filter, patch) {
-  const url = SUPABASE_URL + '/rest/v1/' + table + '?' + filter;
-  const res = await fetchWithTimeout(url, {
+  const path = '/rest/v1/' + table + '?' + filter;
+  const res = await fetchWithTimeout(buildUrl(path), {
     method: 'PATCH',
     headers: { 'Prefer': 'return=minimal' },
     body: JSON.stringify(patch),
@@ -60,8 +68,8 @@ export async function dbUpdate(table, filter, patch) {
 }
 
 export async function dbRpc(fn, args = {}) {
-  const url = SUPABASE_URL + '/rest/v1/rpc/' + fn;
-  const res = await fetchWithTimeout(url, {
+  const path = '/rest/v1/rpc/' + fn;
+  const res = await fetchWithTimeout(buildUrl(path), {
     method: 'POST',
     body: JSON.stringify(args),
   });
@@ -72,13 +80,13 @@ export async function dbRpc(fn, args = {}) {
   return await res.json();
 }
 
-export async function storageUpload(bucket, path, file) {
-  const url = SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path;
-  const res = await fetchWithTimeout(url, {
+export async function storageUpload(bucket, pathInBucket, file) {
+  const path = '/storage/v1/object/' + bucket + '/' + pathInBucket;
+  const res = await fetchWithTimeout(buildUrl(path), {
     method: 'POST',
     headers: { 'x-upsert': 'true' },
     body: file,
-  }, 30000);
+  }, 60000);
   if (!res.ok) {
     const t = await res.text();
     throw new Error('Upload HTTP ' + res.status + ': ' + t.slice(0, 200));
@@ -86,6 +94,6 @@ export async function storageUpload(bucket, path, file) {
   return await res.json();
 }
 
-export function storageUrl(bucket, path) {
-  return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
+export function storageUrl(bucket, pathInBucket) {
+  return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + pathInBucket;
 }
