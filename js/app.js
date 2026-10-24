@@ -94,7 +94,7 @@ async function init() {
         ${screenshots.length ? `
         <div class="section">
           <div class="section-title">Скриншоты</div>
-          <div class="screenshots">${screenshots.map(u => `<img src="${u}" alt="">`).join('')}</div>
+          <div class="screenshots">${screenshots.map(u => `<img src="${u}" alt="" loading="lazy">`).join('')}</div>
         </div>` : ''}
 
         <div class="section">
