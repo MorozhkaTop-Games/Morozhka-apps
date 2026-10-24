@@ -1,36 +1,30 @@
 const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
 const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
-function withApiKey(url) {
-  return url + (url.includes('?') ? '&' : '?') + 'apikey=' + KEY;
-}
+const HEADERS = {
+  'apikey': KEY,
+  'Authorization': 'Bearer ' + KEY,
+  'Accept': 'application/json',
+  'Content-Type': 'application/json',
+};
 
-function fetchOnce(url, options, ms) {
-  return Promise.race([
-    fetch(url, options),
-    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
-  ]);
-}
-
-async function fetchWithRetry(url, options = {}) {
-  const delays = [1000, 1000, 2000, 2000, 3000, 3000, 4000, 4000, 5000, 5000];
-  let lastErr;
-  for (let i = 0; i < delays.length; i++) {
-    try {
-      return await fetchOnce(url, options, delays[i]);
-    } catch (err) {
-      lastErr = err;
-      if (i < delays.length - 1) {
-        await new Promise(r => setTimeout(r, 200));
-      }
-    }
+async function fetchWithTimeout(url, options = {}, ms = 15000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, {
+      ...options,
+      headers: { ...HEADERS, ...(options.headers || {}) },
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(t);
   }
-  throw lastErr;
 }
 
 export async function dbSelect(table, query = '') {
-  const url = withApiKey(SUPABASE_URL + '/rest/v1/' + table + (query ? '?' + query : ''));
-  const res = await fetchWithRetry(url);
+  const url = SUPABASE_URL + '/rest/v1/' + table + (query ? '?' + query : '');
+  const res = await fetchWithTimeout(url);
   if (!res.ok) {
     const t = await res.text();
     throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
@@ -39,10 +33,10 @@ export async function dbSelect(table, query = '') {
 }
 
 export async function dbInsert(table, row) {
-  const url = withApiKey(SUPABASE_URL + '/rest/v1/' + table);
-  const res = await fetchWithRetry(url, {
+  const url = SUPABASE_URL + '/rest/v1/' + table;
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify(row),
   });
   if (!res.ok) {
@@ -53,10 +47,10 @@ export async function dbInsert(table, row) {
 }
 
 export async function dbUpdate(table, filter, patch) {
-  const url = withApiKey(SUPABASE_URL + '/rest/v1/' + table + '?' + filter);
-  const res = await fetchWithRetry(url, {
+  const url = SUPABASE_URL + '/rest/v1/' + table + '?' + filter;
+  const res = await fetchWithTimeout(url, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    headers: { 'Prefer': 'return=minimal' },
     body: JSON.stringify(patch),
   });
   if (!res.ok) {
@@ -66,10 +60,9 @@ export async function dbUpdate(table, filter, patch) {
 }
 
 export async function dbRpc(fn, args = {}) {
-  const url = withApiKey(SUPABASE_URL + '/rest/v1/rpc/' + fn);
-  const res = await fetchWithRetry(url, {
+  const url = SUPABASE_URL + '/rest/v1/rpc/' + fn;
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(args),
   });
   if (!res.ok) {
@@ -80,12 +73,12 @@ export async function dbRpc(fn, args = {}) {
 }
 
 export async function storageUpload(bucket, path, file) {
-  const url = withApiKey(SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path);
-  const res = await fetchWithRetry(url, {
+  const url = SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path;
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
     headers: { 'x-upsert': 'true' },
     body: file,
-  });
+  }, 30000);
   if (!res.ok) {
     const t = await res.text();
     throw new Error('Upload HTTP ' + res.status + ': ' + t.slice(0, 200));
