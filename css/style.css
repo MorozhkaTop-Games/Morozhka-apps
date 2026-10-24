@@ -351,8 +351,15 @@ footer {
   grid-template-columns: 1fr 340px;
   gap: 48px;
   padding: 48px 0 80px;
+  align-items: start;
+  min-width: 0;
 }
-@media (max-width: 860px) { .app-detail { grid-template-columns: 1fr; gap: 32px; } }
+@media (max-width: 860px) { 
+  .app-detail { grid-template-columns: 1fr; gap: 32px; } 
+}
+.app-detail > div {
+  min-width: 0;
+}
 
 .app-top {
   display: flex; gap: 24px; align-items: flex-start;
