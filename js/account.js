@@ -63,13 +63,13 @@ async function init() {
             <!-- ИКОНКА ПРОФИЛЯ -->
             <div class="form-group">
               <label>Иконка профиля</label>
-              <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
+              <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
                 <div id="iconPreview">
                   ${currentIcon
                     ? `<img src="${esc(currentIcon)}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">`
                     : `<div style="width:80px;height:80px;border-radius:50%;background:var(--surface-2);border:2px dashed var(--border-2);display:flex;align-items:center;justify-content:center;font-size:32px">🎃</div>`}
                 </div>
-                <div style="flex:1">
+                <div style="flex:1;min-width:200px">
                   <div class="file-input-wrap" id="iconWrap">
                     <span class="file-input-icon">⭐</span>
                     <div class="file-input-text">
@@ -90,23 +90,17 @@ async function init() {
               <textarea name="bio" maxlength="300">${esc(profile.bio || '')}</textarea>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom:32px">
               <label>Ссылки (одна на строку)</label>
-              <textarea name="links">${esc(profile.links || '')}</textarea>
+              <textarea name="links" rows="4">${esc(profile.links || '')}</textarea>
             </div>
 
-            <div class="form-group">
-              <label>Пароль (для подтверждения) *</label>
-              <input type="password" name="password" required>
-              <div class="hint">Введите текущий пароль, чтобы сохранить</div>
-            </div>
-
-            <button type="submit" class="btn">Сохранить</button>
+            <button type="submit" class="btn">Сохранить изменения</button>
             <p id="saveStatus" style="margin-top:10px;font-size:13px"></p>
           </form>
         </div>
 
-        <div class="section" style="margin-top:32px">
+        <div class="section" style="margin-top:48px">
           <div class="section-title">Смена пароля</div>
           <form id="passwordForm">
             <div class="form-group">
@@ -198,12 +192,12 @@ async function init() {
     const publicUrl = data.publicUrl;
 
     iconUrlHidden.value = publicUrl;
-    iconHint.textContent = '✅ Загружено (не забудьте сохранить профиль)';
+    iconHint.textContent = '✅ Загружено (не забудьте сохранить)';
     iconHint.style.color = 'var(--success)';
     iconPreview.innerHTML = `<img src="${publicUrl}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">`;
   });
 
-  // ===== СОХРАНЕНИЕ ПРОФИЛЯ =====
+  // ===== СОХРАНЕНИЕ ПРОФИЛЯ (БЕЗ ПАРОЛЯ) =====
   document.getElementById('profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -213,7 +207,6 @@ async function init() {
 
     const { data, error } = await supabase.rpc('update_own_profile', {
       p_account_id: session.account_id,
-      p_current_password: fd.get('password'),
       p_display_name: fd.get('display_name'),
       p_slug: fd.get('slug'),
       p_icon_url: iconUrlHidden.value || '',
@@ -241,7 +234,6 @@ async function init() {
 
     statusEl.textContent = 'Сохранено!';
     statusEl.style.color = 'var(--success)';
-    e.target.password.value = '';
   });
 
   // ===== СМЕНА ПАРОЛЯ =====
