@@ -1,4 +1,3 @@
-// ============= ЛИСТОПАД =============
 function createLeafFall() {
   const container = document.createElement('div');
   container.id = 'leaf-fall';
@@ -20,7 +19,6 @@ function createLeafFall() {
   }
 }
 
-// ============= ТЫКВЫ ПО УГЛАМ =============
 function createPumpkins() {
   const tl = document.createElement('div');
   tl.className = 'pumpkin-corner tl';
@@ -33,7 +31,6 @@ function createPumpkins() {
   document.body.appendChild(br);
 }
 
-// ============= МЕРЦАЮЩИЕ ТОЧКИ =============
 function createSpookyDots() {
   for (let i = 0; i < 20; i++) {
     const dot = document.createElement('div');
@@ -45,12 +42,10 @@ function createSpookyDots() {
   }
 }
 
-// ============= КУРСОР-ТЫКВА =============
 function enableHalloweenCursor() {
   document.body.classList.add('halloween-cursor');
 }
 
-// ============= ЗАПУСК =============
 document.addEventListener('DOMContentLoaded', () => {
   createLeafFall();
   createPumpkins();
