@@ -1,4 +1,4 @@
-import { getSession } from './session.js?v=2';
+import { getSession } from './session.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const link = document.querySelector('nav a[href="account.html"]');
