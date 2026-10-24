@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Вход — Morozhka Apps</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <header>
@@ -45,9 +46,10 @@
 
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
-  <script type="module">
-    import { supabase } from './js/config.js?v=2';
-    import { saveSession } from './js/session.js?v=2';
+  <script>
+    const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const form = document.getElementById('loginForm');
     const status = document.getElementById('status');
@@ -56,35 +58,30 @@
       e.preventDefault();
       const fd = new FormData(form);
       status.textContent = 'Вход…';
-      status.style.color = 'var(--muted)';
 
-      const { data, error } = await supabase.rpc('login_user', {
+      const { data, error } = await client.rpc('login_user', {
         p_login: fd.get('login'),
         p_password: fd.get('password'),
       });
 
       if (error) {
         status.textContent = 'Ошибка: ' + error.message;
-        status.style.color = 'var(--danger)';
         return;
       }
       if (data.error) {
         status.textContent = data.error;
-        status.style.color = 'var(--danger)';
         return;
       }
 
-      saveSession({
+      localStorage.setItem('morozhka_session', JSON.stringify({
         account_id: data.account_id,
         profile_id: data.profile_id,
         display_name: data.display_name,
         slug: data.slug,
-      });
+      }));
 
       location.href = 'account.html';
     });
   </script>
-  <script type="module" src="js/nav.js?v=2"></script>
-  <script type="module" src="js/halloween.js?v=2"></script>
 </body>
 </html>
