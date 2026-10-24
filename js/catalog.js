@@ -21,14 +21,30 @@ function formatSize(bytes) {
 }
 
 async function loadApps() {
+  // 1. Сначала из кеша — мгновенно
+  const cached = localStorage.getItem('cache_apps');
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed.length) {
+        allApps = parsed;
+        renderApps();
+      }
+    } catch (e) {}
+  }
+
+  // 2. Потом из Supabase — обновляем
   try {
     const apps = await dbSelect('apps',
       'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,app_categories(category_id)&status=eq.published&order=created_at.desc'
     );
     allApps = apps || [];
+    localStorage.setItem('cache_apps', JSON.stringify(allApps));
     renderApps();
   } catch (e) {
-    grid.innerHTML = '<div class="empty">Не удалось загрузить. Обновите страницу.</div>';
+    if (!cached) {
+      grid.innerHTML = '<div class="empty">Не удалось загрузить. Обновите страницу.</div>';
+    }
   }
 }
 
@@ -61,21 +77,34 @@ function renderApps() {
 }
 
 async function loadCategories() {
+  const cached = localStorage.getItem('cache_categories');
+  if (cached) {
+    try {
+      const cats = JSON.parse(cached);
+      if (cats && cats.length) renderFilters(cats);
+    } catch (e) {}
+  }
+
   try {
     const cats = await dbSelect('categories', 'select=*&order=sort_order');
-    filtersBox.innerHTML = `
-      <button class="filter-btn active" data-cat="">Все</button>
-      ${cats.map(c => `<button class="filter-btn" data-cat="${c.id}">${esc(c.name)}</button>`).join('')}
-    `;
-    filtersBox.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        filtersBox.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentCat = btn.dataset.cat || null;
-        renderApps();
-      });
-    });
+    localStorage.setItem('cache_categories', JSON.stringify(cats));
+    renderFilters(cats);
   } catch (e) {}
+}
+
+function renderFilters(cats) {
+  filtersBox.innerHTML = `
+    <button class="filter-btn active" data-cat="">Все</button>
+    ${cats.map(c => `<button class="filter-btn" data-cat="${c.id}">${esc(c.name)}</button>`).join('')}
+  `;
+  filtersBox.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filtersBox.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCat = btn.dataset.cat || null;
+      renderApps();
+    });
+  });
 }
 
 loadApps();
