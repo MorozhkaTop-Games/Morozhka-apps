@@ -19,10 +19,19 @@ function readApp(slug) {
   } catch { return null; }
 }
 
+function starsHtml(avg, count) {
+  if (!count) return '<span style="color:var(--muted-2);font-size:13px">нет оценок</span>';
+  const full = Math.round(avg);
+  return `<span class="review-stars" style="font-size:16px">${'★'.repeat(full)}${'☆'.repeat(5 - full)}</span> <span style="color:var(--muted);font-size:13px">${avg.toFixed(1)} (${count} ${count === 1 ? 'отзыв' : count < 5 ? 'отзыва' : 'отзывов'})</span>`;
+}
+
 function renderApp(app) {
   document.title = app.name + ' — Morozhka Apps';
   const shots = (app.screenshots || []).filter(Boolean);
   const hasDownload = !!app.download_url;
+  const author = app.author_profile && app.author_profile.slug
+    ? `<a href="profile.html?u=${encodeURIComponent(app.author_profile.slug)}">${esc(app.author)}</a>`
+    : esc(app.author);
 
   content.innerHTML = `
     <div class="app-detail">
@@ -31,16 +40,21 @@ function renderApp(app) {
           <img class="app-icon" src="${esc(app.icon_url)}" alt="" width="88" height="88" decoding="async">
           <div style="flex:1;min-width:0">
             <h1>${esc(app.name)}</h1>
-            <div class="author-line">Автор: ${esc(app.author)}</div>
+            <div class="author-line">Автор: ${author}</div>
             <div class="pill-row">
               ${app.version ? `<span class="pill">v${esc(app.version)}</span>` : ''}
               <span class="pill">${esc(app.age_rating || '0+')}</span>
             </div>
+            <div id="ratingBox" style="margin-top:10px">${app.rating_count > 0 ? starsHtml(app.rating_avg || 0, app.rating_count) : '<span style="color:var(--muted-2);font-size:13px">Рейтинг загружается…</span>'}</div>
           </div>
         </div>
+
         <div class="section"><div class="section-title">Описание</div><p>${esc(app.description)}</p></div>
+
         ${shots.length ? `<div class="section"><div class="section-title">Скриншоты</div><div class="screenshots">${shots.map(u => `<img src="${esc(u)}" alt="" loading="lazy" decoding="async">`).join('')}</div></div>` : ''}
+
         <div class="section"><div class="section-title">Установка</div><p>${esc(app.install_instructions || 'Скачайте APK и откройте файл.')}</p></div>
+
         <div class="section">
           <div class="section-title">Отзывы</div>
           <button id="loadReviewsBtn" class="btn btn-ghost btn-sm">Показать отзывы</button>
@@ -73,6 +87,26 @@ function renderApp(app) {
 
   const btn = document.getElementById('downloadBtn');
   if (btn) btn.addEventListener('click', () => { window.location.href = app.download_url; });
+
+  // Рейтинг — грузим сразу, обновляем блок
+  dbRpc('get_app_rating', { p_app_id: app.id })
+    .then(r => {
+      const box = document.getElementById('ratingBox');
+      if (!box) return;
+      if (r && r.count > 0) {
+        box.innerHTML = starsHtml(r.avg, r.count);
+        app.rating_avg = r.avg; app.rating_count = r.count;
+        try {
+          localStorage.setItem('app_' + (app.slug || app.id), JSON.stringify(app));
+        } catch {}
+      } else {
+        box.innerHTML = '<span style="color:var(--muted-2);font-size:13px">Пока нет оценок</span>';
+      }
+    })
+    .catch(() => {
+      const box = document.getElementById('ratingBox');
+      if (box) box.innerHTML = '';
+    });
 
   document.getElementById('loadReviewsBtn').addEventListener('click', async (e) => {
     e.target.disabled = true;
@@ -119,7 +153,7 @@ function renderApp(app) {
 function showNotFound() {
   content.innerHTML = `
     <div class="empty" style="padding:40px 20px">
-      <p style="margin-bottom:16px">Приложение не найдено в кэше.</p>
+      <p style="margin-bottom:16px">Приложение не найдено.</p>
       <a href="catalog.html" class="btn">Перейти в каталог</a>
     </div>`;
 }
@@ -127,13 +161,24 @@ function showNotFound() {
 async function init() {
   if (!content) return;
 
-  // 1. Если slug есть — читаем из кэша (0 запросов)
   if (appSlug) {
     const app = readApp(appSlug);
-    if (app) { renderApp(app); return; }
+    if (app) {
+      renderApp(app);
+      // в фоне подтягиваем свежие данные (если каталог не так давно обновлялся — пропустим)
+      dbSelect('apps', 'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,description,screenshots,install_instructions,has_ads,has_iap,age_rating,status,author_profile:profiles!author_profile_id(slug)&slug=eq.' + encodeURIComponent(appSlug) + '&status=eq.published&limit=1')
+        .then(rows => {
+          if (rows && rows.length) {
+            const fresh = rows[0];
+            try { localStorage.setItem('app_' + appSlug, JSON.stringify(fresh)); } catch {}
+            if (JSON.stringify(fresh) !== JSON.stringify(app)) renderApp(fresh);
+          }
+        })
+        .catch(() => {});
+      return;
+    }
   }
 
-  // 2. Если кэша нет — один запрос (fallback)
   content.innerHTML = '<div class="empty">Загрузка…</div>';
   try {
     const base = appId ? 'id=eq.' + encodeURIComponent(appId) : 'slug=eq.' + encodeURIComponent(appSlug);
