@@ -1,13 +1,15 @@
 const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
 const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzY2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
+const HEADERS = {
+  apikey: KEY,
+  Authorization: 'Bearer ' + KEY,
+  'Content-Type': 'application/json',
+};
+
 export async function dbSelect(table, query = '') {
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + (query ? '?' + query : ''), {
-    headers: {
-      apikey: KEY,
-      Authorization: 'Bearer ' + KEY,
-      // Content-Type намеренно НЕ ставим: в GET он не нужен и вызывает лишний preflight
-    },
+    headers: HEADERS,
   });
   if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
   return await res.json();
@@ -16,11 +18,7 @@ export async function dbSelect(table, query = '') {
 export async function dbRpc(fn, args = {}) {
   const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
     method: 'POST',
-    headers: {
-      apikey: KEY,
-      Authorization: 'Bearer ' + KEY,
-      'Content-Type': 'application/json',
-    },
+    headers: HEADERS,
     body: JSON.stringify(args),
   });
   const text = await res.text();
