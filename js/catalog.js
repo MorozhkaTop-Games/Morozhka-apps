@@ -4,40 +4,23 @@ const grid = document.getElementById('apps');
 const filtersBox = document.getElementById('filters');
 let currentCat = null;
 let allApps = [];
-const CACHE_KEY = 'cache_apps_v2';
-const CACHE_TTL = 5 * 60 * 1000; // 5 минут
 
 const formatSize = b => !b ? '—' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-function saveCache(apps) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), apps }));
-    // также раскладываем по slug — чтобы app.html читал мгновенно
-    apps.forEach(a => {
-      if (a.slug) localStorage.setItem('app_' + a.slug, JSON.stringify(a));
-    });
-  } catch {}
-}
-
-function loadCache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    if (!obj || !obj.apps) return null;
-    if (Date.now() - obj.t > CACHE_TTL) return null;
-    return obj.apps;
-  } catch { return null; }
-}
-
 async function loadApps() {
   if (!grid) return;
 
-  // 1. Мгновенно показываем кэш (даже просроченный — лучше, чем пусто)
-  const cached = loadCache() || (() => {
-    try { const r = localStorage.getItem(CACHE_KEY); return r ? JSON.parse(r).apps : null; } catch { return null; }
-  })();
+  // 1. Сначала показываем кэш (если есть) — мгновенно
+  let cached = null;
+  try {
+    const raw = localStorage.getItem('cache_apps');
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj && obj.apps) cached = obj.apps;
+    }
+  } catch {}
+
   if (cached && cached.length) {
     allApps = cached;
     renderApps();
@@ -45,7 +28,7 @@ async function loadApps() {
     grid.innerHTML = '<div class="empty">Загрузка…</div>';
   }
 
-  // 2. В фоне обновляем с сервера (полные данные)
+  // 2. Один запрос — все приложения со всеми полями
   try {
     const apps = await dbSelect(
       'apps',
@@ -53,7 +36,13 @@ async function loadApps() {
     );
     if (apps && apps.length) {
       allApps = apps;
-      saveCache(apps);
+      try {
+        localStorage.setItem('cache_apps', JSON.stringify({ t: Date.now(), apps }));
+        // раскладываем по slug — для app.js
+        apps.forEach(a => {
+          if (a.slug) localStorage.setItem('app_' + a.slug, JSON.stringify(a));
+        });
+      } catch {}
       renderApps();
     }
   } catch (e) {
@@ -85,10 +74,10 @@ function renderApps() {
 
 async function loadCategories() {
   if (!filtersBox) return;
-  const cachedCats = localStorage.getItem('cache_cats');
-  if (cachedCats) try {
-    const cats = JSON.parse(cachedCats);
-    renderCats(cats);
+  const raw = localStorage.getItem('cache_cats');
+  if (raw) try {
+    const cats = JSON.parse(raw);
+    if (cats && cats.length) { renderCats(cats); }
   } catch {}
   try {
     const cats = await dbSelect('categories', 'select=*&order=sort_order');
