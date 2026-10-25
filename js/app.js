@@ -1,4 +1,5 @@
 import { dbSelect, dbRpc } from './api.js';
+
 const content = document.getElementById('content');
 const appId = new URLSearchParams(location.search).get('id');
 const appSlug = new URLSearchParams(location.search).get('slug');
@@ -11,36 +12,14 @@ function getClientId() {
   return id;
 }
 
-function getFromCache(slug) {
+function readApp(slug) {
   try {
     const raw = localStorage.getItem('app_' + slug);
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
 
-async function init() {
-  if (!content) return;
-  if (!appId && !appSlug) { content.innerHTML = '<div class="empty">Приложение не найдено</div>'; return; }
-
-  // 1. Мгновенно из кэша (0 запросов!)
-  let app = appSlug ? getFromCache(appSlug) : null;
-
-  if (!app) {
-    // fallback — если кэша нет, грузим с сервера
-    content.innerHTML = '<div class="empty">Загрузка…</div>';
-    try {
-      const base = appId ? 'id=eq.' + encodeURIComponent(appId) : 'slug=eq.' + encodeURIComponent(appSlug);
-      const rows = await dbSelect('apps', 'select=*&' + base + '&status=eq.published&limit=1');
-      if (!rows || !rows.length) { content.innerHTML = '<div class="empty">Приложение не найдено</div>'; return; }
-      app = rows[0];
-      // обновляем кэш
-      try { localStorage.setItem('app_' + (app.slug || app.id), JSON.stringify(app)); } catch {}
-    } catch (e) {
-      content.innerHTML = '<div class="empty">Ошибка: ' + esc(e.message) + '</div>';
-      return;
-    }
-  }
-
+function renderApp(app) {
   document.title = app.name + ' — Morozhka Apps';
   const shots = (app.screenshots || []).filter(Boolean);
   const hasDownload = !!app.download_url;
@@ -135,5 +114,36 @@ async function init() {
       e.target.reset();
     } catch (err) { st.textContent = 'Ошибка: ' + err.message; st.style.color = 'var(--danger)'; }
   });
+}
+
+function showNotFound() {
+  content.innerHTML = `
+    <div class="empty" style="padding:40px 20px">
+      <p style="margin-bottom:16px">Приложение не найдено в кэше.</p>
+      <a href="catalog.html" class="btn">Перейти в каталог</a>
+    </div>`;
+}
+
+async function init() {
+  if (!content) return;
+
+  // 1. Если slug есть — читаем из кэша (0 запросов)
+  if (appSlug) {
+    const app = readApp(appSlug);
+    if (app) { renderApp(app); return; }
+  }
+
+  // 2. Если кэша нет — один запрос (fallback)
+  content.innerHTML = '<div class="empty">Загрузка…</div>';
+  try {
+    const base = appId ? 'id=eq.' + encodeURIComponent(appId) : 'slug=eq.' + encodeURIComponent(appSlug);
+    const rows = await dbSelect('apps', 'select=*&' + base + '&status=eq.published&limit=1');
+    if (!rows || !rows.length) { showNotFound(); return; }
+    const app = rows[0];
+    try { localStorage.setItem('app_' + (app.slug || app.id), JSON.stringify(app)); } catch {}
+    renderApp(app);
+  } catch (e) {
+    content.innerHTML = `<div class="empty">Ошибка: ${esc(e.message)}<br><br><a href="catalog.html" class="btn">В каталог</a></div>`;
+  }
 }
 init();
