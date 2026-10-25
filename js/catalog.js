@@ -3,47 +3,44 @@ import { dbSelect } from './api.js';
 const grid = document.getElementById('apps');
 const filtersBox = document.getElementById('filters');
 
+if (!grid) {
+  document.body.innerHTML = '<div style="color:red;padding:20px">ОШИБКА: #apps не найден</div>';
+  throw new Error('no #apps');
+}
+
 grid.innerHTML = '<div class="empty">Загрузка…</div>';
 
 let currentCat = null;
 let allApps = [];
-
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
 
 function formatSize(bytes) {
   if (!bytes) return '—';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
   return (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
 
 async function loadApps() {
-  // 1. Сначала из кеша — мгновенно
   const cached = localStorage.getItem('cache_apps');
   if (cached) {
     try {
-      const parsed = JSON.parse(cached);
-      if (parsed && parsed.length) {
-        allApps = parsed;
-        renderApps();
-      }
+      const apps = JSON.parse(cached);
+      if (apps && apps.length) { allApps = apps; renderApps(); }
     } catch (e) {}
   }
-
-  // 2. Потом из Supabase — обновляем
   try {
     const apps = await dbSelect('apps',
-      'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,app_categories(category_id)&status=eq.published&order=created_at.desc'
-    );
+      'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,app_categories(category_id)&status=eq.published&order=created_at.desc');
     allApps = apps || [];
     localStorage.setItem('cache_apps', JSON.stringify(allApps));
     renderApps();
   } catch (e) {
     if (!cached) {
-      grid.innerHTML = '<div class="empty">Не удалось загрузить. Обновите страницу.</div>';
+      grid.innerHTML = '<div class="empty">Не удалось загрузить. Проверьте интернет и обновите страницу.</div>';
     }
   }
 }
@@ -77,34 +74,21 @@ function renderApps() {
 }
 
 async function loadCategories() {
-  const cached = localStorage.getItem('cache_categories');
-  if (cached) {
-    try {
-      const cats = JSON.parse(cached);
-      if (cats && cats.length) renderFilters(cats);
-    } catch (e) {}
-  }
-
   try {
     const cats = await dbSelect('categories', 'select=*&order=sort_order');
-    localStorage.setItem('cache_categories', JSON.stringify(cats));
-    renderFilters(cats);
-  } catch (e) {}
-}
-
-function renderFilters(cats) {
-  filtersBox.innerHTML = `
-    <button class="filter-btn active" data-cat="">Все</button>
-    ${cats.map(c => `<button class="filter-btn" data-cat="${c.id}">${esc(c.name)}</button>`).join('')}
-  `;
-  filtersBox.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      filtersBox.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentCat = btn.dataset.cat || null;
-      renderApps();
+    filtersBox.innerHTML = `<button class="filter-btn active" data-cat="">Все</button>` +
+      cats.map(c => `<button class="filter-btn" data-cat="${c.id}">${esc(c.name)}</button>`).join('');
+    filtersBox.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        filtersBox.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCat = btn.dataset.cat || null;
+        renderApps();
+      });
     });
-  });
+  } catch (e) {
+    console.warn('Категории:', e.message);
+  }
 }
 
 loadApps();
