@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Загрузка приложения — Morozhka Apps</title>
+  <title>Загрузка — Morozhka Apps</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
   <header>
     <div class="container">
       <a href="index.html" class="brand">
         <img class="brand-mark" src="favicon.png" alt="">
-        Morozhka <span>Apps</span>
+        Morozhka <em>Apps</em>
       </a>
       <nav>
         <a href="catalog.html">Каталог</a>
-        <a href="upload.html" class="active">Загрузить</a>
+        <a href="publish.html">Публикация</a>
         <a href="account.html">Профиль</a>
       </nav>
     </div>
@@ -25,34 +25,26 @@
   <main class="container" style="max-width:640px;padding:40px 24px 64px">
     <div class="page-header" style="border:none">
       <h1>Загрузить файлы</h1>
-      <p>Иконка и скриншоты — в облако. APK — через GitHub Releases (ссылка ниже).</p>
+      <p>Иконка и скриншоты — в облако. APK — через GitHub Releases.</p>
     </div>
 
     <form id="uploadForm">
-      <!-- ИКОНКА -->
       <div class="form-group">
         <label>Иконка приложения (PNG, до 2 МБ)</label>
         <div class="file-input-wrap">
           <span class="file-input-icon">🎃</span>
-          <div class="file-input-text">
-            <strong>Нажмите или перетащите</strong><br>
-            PNG, JPG, WebP
-          </div>
+          <div class="file-input-text"><strong>Нажмите или перетащите</strong><br>PNG, JPG, WebP</div>
           <input type="file" accept="image/*" id="iconInput">
           <div class="file-input-name" id="iconName"></div>
         </div>
         <div class="hint" id="iconHint"></div>
       </div>
 
-      <!-- СКРИНШОТЫ -->
       <div class="form-group">
         <label>Скриншоты (до 5 штук, до 10 МБ каждый)</label>
         <div class="file-input-wrap">
           <span class="file-input-icon">🖼️</span>
-          <div class="file-input-text">
-            <strong>Нажмите или перетащите</strong><br>
-            PNG, JPG, WebP
-          </div>
+          <div class="file-input-text"><strong>Нажмите или перетащите</strong><br>PNG, JPG, WebP</div>
           <input type="file" accept="image/*" multiple id="screensInput">
           <div class="file-input-name" id="screensName"></div>
         </div>
@@ -62,24 +54,11 @@
       <button type="submit" class="btn" style="width:100%">Загрузить в облако</button>
       <p id="status" style="margin-top:16px;text-align:center;font-size:13px"></p>
     </form>
-
-    <div style="margin-top:32px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--muted);line-height:1.7">
-      <strong style="color:var(--text);display:block;margin-bottom:8px">📦 APK-файл</strong>
-      APK загружается <strong style="color:var(--accent)">не здесь</strong>, а через <strong>GitHub Releases</strong>:
-      <ol style="padding-left:20px;margin-top:8px">
-        <li>Открой <a href="https://github.com/morozhkatop-games/morozhka-files/releases" target="_blank">github.com/.../morozhka-files/releases</a></li>
-        <li>Нажми <strong>Create a new release</strong></li>
-        <li>Загрузи APK как бинарный файл</li>
-        <li>Скопируй ссылку на файл</li>
-        <li>Вставь её в <a href="publish.html">форму публикации</a> или в админку</li>
-      </ol>
-      <div style="margin-top:12px">Почему так? <strong>GitHub Releases</strong> — бесплатно, <strong>2 ГБ на файл</strong>, без ограничений. Supabase Storage — только <strong>1 ГБ на всё</strong>.</div>
-    </div>
   </main>
 
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
-    <script type="module">
+  <script type="module">
     import { storageUpload, storageUrl } from './js/api.js';
     import { getSession } from './js/session.js';
 
@@ -100,15 +79,6 @@
     bindName('iconInput', 'iconName');
     bindName('screensInput', 'screensName', true);
 
-    document.querySelectorAll('.file-input-wrap').forEach(wrap => {
-      ['dragenter', 'dragover'].forEach(ev => {
-        wrap.addEventListener(ev, (e) => { e.preventDefault(); wrap.classList.add('drag'); });
-      });
-      ['dragleave', 'drop'].forEach(ev => {
-        wrap.addEventListener(ev, () => wrap.classList.remove('drag'));
-      });
-    });
-
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!session) {
@@ -116,16 +86,13 @@
         status.style.color = 'var(--danger)';
         return;
       }
-
       const iconFile = document.getElementById('iconInput').files[0];
       const screenFiles = document.getElementById('screensInput').files;
-
       if (!iconFile && !screenFiles.length) {
         status.textContent = 'Выберите хотя бы один файл';
         status.style.color = 'var(--danger)';
         return;
       }
-
       status.textContent = 'Загрузка…';
       status.style.color = 'var(--muted)';
 
@@ -142,7 +109,6 @@
           document.getElementById('iconHint').innerHTML = `✅ <a href="${results.icon_url}" target="_blank">Открыть</a>`;
           document.getElementById('iconHint').style.color = 'var(--success)';
         }
-
         for (const file of screenFiles) {
           if (file.size > 10 * 1024 * 1024) continue;
           const ext = file.name.split('.').pop();
@@ -150,10 +116,8 @@
           await storageUpload('app-screenshots', path, file);
           results.screenshots.push(storageUrl('app-screenshots', path));
         }
-
         document.getElementById('screensHint').innerHTML = `✅ Загружено: ${results.screenshots.length} шт.`;
         document.getElementById('screensHint').style.color = 'var(--success)';
-
         status.innerHTML = `
           <div style="color:var(--success);margin-bottom:12px;font-weight:600">✅ Готово!</div>
           <div style="font-size:12px;color:var(--muted);word-break:break-all;text-align:left;background:var(--surface);padding:12px;border-radius:6px">
@@ -168,7 +132,7 @@
       }
     });
   </script>
-  <script type="module" src="js/nav.js"></script>
-  <script type="module" src="js/halloween.js"></script>
+  <script type="module" src="js/nav.js?v=15"></script>
+  <script type="module" src="js/halloween.js?v=15"></script>
 </body>
 </html>
