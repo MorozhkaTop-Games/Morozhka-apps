@@ -39,8 +39,9 @@ async function init() {
     const apps = await dbSelect('apps',
       'select=id,name,slug,icon_url,size_bytes,downloads,version&author_profile_id=eq.' + profile.id + '&status=eq.published&order=created_at.desc');
 
+    // Защита от битой иконки (loading="lazy" и onerror)
     const iconHtml = profile.icon_url
-      ? `<img src="${esc(profile.icon_url)}" alt="">`
+      ? `<img src="${esc(profile.icon_url)}" alt="" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'">`
       : `<div style="width:96px;height:96px;border-radius:50%;background:var(--surface-2);border:2px dashed var(--border-2);display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0">🎃</div>`;
 
     content.innerHTML = `
