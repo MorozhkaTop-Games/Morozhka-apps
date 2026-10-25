@@ -1,128 +1,61 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Регистрация — Morozhka Apps</title>
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-</head>
-<body>
-  <header>
-    <div class="container">
-      <a href="index.html" class="brand">
-        <img class="brand-mark" src="favicon.png" alt="">
-        Morozhka <em>Apps</em>
-      </a>
-      <nav>
-        <a href="catalog.html">Каталог</a>
-        <a href="publish.html">Публикация</a>
-        <a href="account.html">Профиль</a>
-      </nav>
-    </div>
-  </header>
+<script type="module">
+  import { dbRpc } from './js/api.js';
+  import { saveSession } from './js/session.js';
 
-  <main class="container" style="max-width:440px;padding:60px 24px 64px">
-    <div class="login-wrap" style="margin:0">
-      <h1>Регистрация</h1>
-      <form id="signupForm">
-        <div class="form-group">
-          <label>Логин *</label>
-          <input type="text" name="login" required minlength="3" maxlength="30" autocomplete="username">
-          <div class="hint">От 3 до 30 символов, латиница и цифры</div>
-        </div>
-        <div class="form-group">
-          <label>Пароль *</label>
-          <input type="password" name="password" required minlength="6" autocomplete="new-password">
-          <div class="hint">Минимум 6 символов</div>
-        </div>
-        <div class="form-group">
-          <label>Имя / никнейм *</label>
-          <input type="text" name="display_name" required maxlength="60">
-        </div>
-        <div class="form-group">
-          <label>Slug (для ссылки на профиль) *</label>
-          <input type="text" name="slug" required pattern="[a-z0-9-]{2,30}" placeholder="my-nick">
-          <div class="hint">Только латиница, цифры и дефис</div>
-        </div>
-        <div class="cf-turnstile" data-sitekey="0x4AAAAAAFi-wNGd6J0P5XlY" data-theme="dark" style="margin-bottom:12px"></div>
-        <button type="submit" class="btn" style="width:100%">Создать аккаунт</button>
-        <p id="status" style="margin-top:14px;font-size:13px;text-align:center"></p>
-      </form>
-      <p style="margin-top:20px;text-align:center;font-size:13px;color:var(--muted)">
-        Уже есть аккаунт? <a href="login.html">Войти</a>
-      </p>
-    </div>
-  </main>
+  const form = document.getElementById('signupForm');
+  const status = document.getElementById('status');
 
-  <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const turnstileToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
 
-  <script type="module">
-    import { saveSession } from './js/session.js';
+    if (!turnstileToken) {
+      status.textContent = 'Пройдите проверку капчи';
+      status.style.color = 'var(--danger)';
+      return;
+    }
 
-    const form = document.getElementById('signupForm');
-    const status = document.getElementById('status');
-    
-    const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
-    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzY2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
+    status.textContent = 'Отправка…';
+    status.style.color = 'var(--muted)';
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(form);
-      const turnstileToken = document.querySelector('[name="cf-turnstile-response"]')?.value;
+    try {
+      const data = await dbRpc('register_user', {
+        p_login: fd.get('login'),
+        p_password: fd.get('password'),
+        p_display_name: fd.get('display_name'),
+        p_slug: fd.get('slug'),
+        p_turnstile_token: turnstileToken,
+      });
 
-      if (!turnstileToken) {
-        status.textContent = 'Пройдите проверку капчи';
+      if (!data || data.error) {
+        status.textContent = (data && data.error) || 'Ошибка регистрации';
+        status.style.color = 'var(--danger)';
+        if (window.turnstile) window.turnstile.reset();
+        return;
+      }
+
+      if (!data.account_id || !data.profile_id) {
+        status.textContent = 'Сервер вернул неполный ответ — проверь функцию register_user';
         status.style.color = 'var(--danger)';
         return;
       }
 
-      status.textContent = 'Отправка…';
-      status.style.color = 'var(--muted)';
+      saveSession({
+        account_id: data.account_id,
+        profile_id: data.profile_id,
+        display_name: fd.get('display_name'),
+        slug: fd.get('slug'),
+      });
 
-      try {
-        const regRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/register_user`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': KEY,
-            'Authorization': 'Bearer ' + KEY,
-          },
-          body: JSON.stringify({
-            p_login: fd.get('login'),
-            p_password: fd.get('password'),
-            p_display_name: fd.get('display_name'),
-            p_slug: fd.get('slug'),
-            p_turnstile_token: turnstileToken
-          }),
-        });
+      status.textContent = 'Готово! Переходим…';
+      status.style.color = 'var(--success)';
+      setTimeout(() => location.href = 'account.html', 600);
 
-        const data = await regRes.json();
-
-        if (data.error) {
-          status.textContent = data.error;
-          status.style.color = 'var(--danger)';
-          if (window.turnstile) window.turnstile.reset();
-          return;
-        }
-
-        saveSession({
-          account_id: data.account_id,
-          profile_id: data.profile_id,
-          display_name: fd.get('display_name'),
-          slug: fd.get('slug'),
-        });
-
-        status.textContent = 'Готово! Переходим…';
-        status.style.color = 'var(--success)';
-        setTimeout(() => location.href = 'account.html', 600);
-
-      } catch (err) {
-        status.textContent = 'Ошибка: ' + err.message;
-        status.style.color = 'var(--danger)';
-      }
-    });
-  </script>
-</body>
-</html>
+    } catch (err) {
+      status.textContent = 'Ошибка: ' + err.message;
+      status.style.color = 'var(--danger)';
+      if (window.turnstile) window.turnstile.reset();
+    }
+  });
+</script>
