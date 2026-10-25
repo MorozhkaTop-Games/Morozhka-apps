@@ -8,7 +8,7 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-async function req(path, options = {}, ms = 6000) {
+async function req(path, options = {}, ms = 15000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
@@ -23,11 +23,10 @@ async function req(path, options = {}, ms = 6000) {
 }
 
 export async function dbSelect(table, query = '') {
-  const path = '/rest/v1/' + table + (query ? '?' + query : '');
-  const res = await req(path);
+  const res = await req('/rest/v1/' + table + (query ? '?' + query : ''));
   if (!res.ok) {
     const t = await res.text();
-    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
+    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 300));
   }
   return await res.json();
 }
@@ -35,11 +34,11 @@ export async function dbSelect(table, query = '') {
 export async function dbInsert(table, row) {
   const res = await req('/rest/v1/' + table, {
     method: 'POST',
-    headers: { 'Prefer': 'return=minimal' },
+    headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify(row),
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  return true;
+  return await res.json().catch(() => null);
 }
 
 export async function dbUpdate(table, filter, patch) {
@@ -56,11 +55,14 @@ export async function dbRpc(fn, args = {}) {
     method: 'POST',
     body: JSON.stringify(args),
   });
+  const text = await res.text();
+  let parsed = null;
+  try { parsed = text ? JSON.parse(text) : null; } catch { parsed = { error: text }; }
   if (!res.ok) {
-    const t = await res.text();
-    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
+    const msg = (parsed && (parsed.error || parsed.message || parsed.hint)) || ('HTTP ' + res.status);
+    throw new Error(msg);
   }
-  return await res.json();
+  return parsed;
 }
 
 export async function storageUpload(bucket, path, file) {
@@ -68,11 +70,16 @@ export async function storageUpload(bucket, path, file) {
     method: 'POST',
     headers: { 'x-upsert': 'true' },
     body: file,
-  }, 30000);
-  if (!res.ok) throw new Error('Upload HTTP ' + res.status);
+  }, 60000);
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error('Upload HTTP ' + res.status + ': ' + t.slice(0, 200));
+  }
   return await res.json();
 }
 
 export function storageUrl(bucket, path) {
   return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
 }
+
+export { SUPABASE_URL };
