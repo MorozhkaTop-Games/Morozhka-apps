@@ -414,3 +414,14 @@ body.halloween-cursor a, body.halloween-cursor button { cursor: url("data:image/
   /* 8. Отключаем плавный скролл — иногда тормозит на Android */
   html { scroll-behavior: auto; }
 }
+/* Мобильная производительность */
+@media (max-width: 768px) {
+  body { background-attachment: scroll; background-image: none; }
+  header { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
+  .spooky-dot { display: none !important; }
+  #leaf-fall .leaf:nth-child(n+4) { display: none; }
+  .boo-hover::after { display: none !important; }
+  .app-card:hover { padding-left: 0; }
+  .app-card::before { display: none; }
+  html { scroll-behavior: auto; }
+}
