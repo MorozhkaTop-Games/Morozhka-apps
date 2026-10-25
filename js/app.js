@@ -37,32 +37,17 @@ if (!appId && !appSlug) {
 }
 
 async function init() {
-  const cacheKey = 'cache_app_' + (appId || appSlug);
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) {
-    try { renderApp(JSON.parse(cached)); } catch (e) {}
-  } else {
-    content.innerHTML = '<div class="empty">Загрузка…</div>';
-  }
-
   try {
     const filter = appId ? 'id=eq.' + appId : 'slug=eq.' + appSlug;
     const rows = await dbSelect('apps', 'select=*&' + filter + '&limit=1');
     if (!rows || !rows.length) {
-      if (!cached) content.innerHTML = '<div class="empty">Приложение не найдено в базе</div>';
+      content.innerHTML = '<div class="empty">Приложение не найдено</div>';
       return;
     }
     const app = rows[0];
-    if (app.status !== 'published') {
-      content.innerHTML = '<div class="empty">Приложение скрыто</div>';
-      return;
-    }
-    localStorage.setItem(cacheKey, JSON.stringify(app));
     renderApp(app);
   } catch (e) {
-    if (!cached) {
-      content.innerHTML = '<div class="empty">Не удалось загрузить. Проверьте интернет и обновите.</div>';
-    }
+    content.innerHTML = '<div class="empty">Ошибка загрузки приложения</div>';
   }
 }
 
@@ -71,18 +56,6 @@ async function renderApp(app) {
   let authorSlug = null;
   let authorName = app.author;
   let rating = { avg: 0, count: 0 };
-
-  const metaKey = 'cache_app_meta_' + app.id;
-  const cachedMeta = localStorage.getItem(metaKey);
-  if (cachedMeta) {
-    try {
-      const m = JSON.parse(cachedMeta);
-      cats = m.cats || [];
-      authorSlug = m.authorSlug || null;
-      authorName = m.authorName || app.author;
-      rating = m.rating || { avg: 0, count: 0 };
-    } catch (e) {}
-  }
 
   try {
     const [catLinks, profiles, ratingData] = await Promise.all([
@@ -98,7 +71,6 @@ async function renderApp(app) {
       authorName = profiles[0].display_name || app.author;
     }
     rating = ratingData || { avg: 0, count: 0 };
-    localStorage.setItem(metaKey, JSON.stringify({ cats, authorSlug, authorName, rating }));
   } catch (e) {}
 
   document.title = app.name + ' — Morozhka Apps';
@@ -143,21 +115,6 @@ async function renderApp(app) {
         </div>` : ''}
 
         <div class="section">
-          <div class="section-title">Информация</div>
-          <div class="info-grid">
-            <div class="info-row"><span class="k">Реклама</span><span class="v ${app.has_ads ? 'yes' : 'no'}">${app.has_ads ? 'Есть' : 'Нет'}</span></div>
-            <div class="info-row"><span class="k">Транзакции</span><span class="v ${app.has_iap ? 'yes' : 'no'}">${app.has_iap ? 'Есть' : 'Нет'}</span></div>
-            <div class="info-row"><span class="k">Возраст</span><span class="v">${esc(app.age_rating || '0+')}</span></div>
-            <div class="info-row"><span class="k">Версия</span><span class="v">${esc(app.version || '—')}</span></div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Установка</div>
-          <p>${esc(app.install_instructions || 'Скачайте APK, откройте файл и разрешите установку из неизвестных источников.')}</p>
-        </div>
-
-        <div class="section">
           <div class="section-title">Отзывы</div>
           <div id="reviews"><div class="empty" style="padding:20px 0;border:none">Загрузка…</div></div>
 
@@ -192,14 +149,11 @@ async function renderApp(app) {
         <div class="download-box">
           ${hasDownload
             ? `<button class="download-btn" id="downloadBtn">Скачать</button>`
-            : `<button class="download-btn download-btn-soon" disabled>Скоро</button>
-               <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:8px">Приложение ещё не готово</div>`}
+            : `<button class="download-btn download-btn-soon" disabled>Скоро</button>`}
           <div class="size">${formatSize(app.size_bytes)}</div>
           <div class="download-meta">
             <div><span>Версия</span><span>${esc(app.version || '—')}</span></div>
             <div><span>Скачиваний</span><span>${app.downloads}</span></div>
-            <div><span>Возраст</span><span>${esc(app.age_rating || '0+')}</span></div>
-            <div><span>Рейтинг</span><span>${rating.avg > 0 ? rating.avg.toFixed(1) + ' ★' : '—'}</span></div>
           </div>
         </div>
       </div>
@@ -211,9 +165,7 @@ async function renderApp(app) {
     downloadBtn.addEventListener('click', async () => {
       let clientId = localStorage.getItem('morozhka_client_id');
       if (!clientId) { clientId = uuid(); localStorage.setItem('morozhka_client_id', clientId); }
-      try {
-        await dbRpc('increment_downloads_limited', { app_id: app.id, client_id: clientId });
-      } catch (e) { /* счётчик не критичен */ }
+      try { await dbRpc('increment_downloads_limited', { app_id: app.id, client_id: clientId }); } catch (e) {}
       window.location.href = app.download_url;
     });
   }
@@ -242,44 +194,23 @@ async function renderApp(app) {
 async function loadReviews(id) {
   const box = document.getElementById('reviews');
   if (!box) return;
-
-  const cacheKey = 'cache_reviews_' + id;
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) {
-    try {
-      const data = JSON.parse(cached);
-      if (data && data.length) renderReviews(data);
-    } catch (e) {}
-  }
-
   try {
-    const data = await dbSelect('reviews',
-      'select=*&app_id=eq.' + id + '&status=eq.approved&order=created_at.desc');
-    localStorage.setItem(cacheKey, JSON.stringify(data || []));
-    renderReviews(data || []);
-  } catch (e) {
-    if (!cached) {
-      const b = document.getElementById('reviews');
-      if (b) b.innerHTML = '<div class="empty" style="padding:20px 0;border:none">Не удалось загрузить отзывы</div>';
+    const data = await dbSelect('reviews', 'select=*&app_id=eq.' + id + '&status=eq.approved&order=created_at.desc');
+    if (!data || !data.length) {
+      box.innerHTML = '<div class="empty" style="padding:20px 0;border:none">Пока нет отзывов</div>';
+      return;
     }
-  }
-}
-
-function renderReviews(data) {
-  const box = document.getElementById('reviews');
-  if (!box) return;
-  if (!data || !data.length) {
-    box.innerHTML = '<div class="empty" style="padding:20px 0;border:none">Пока нет отзывов</div>';
-    return;
-  }
-  box.innerHTML = data.map(r => `
-    <div class="review">
-      <div class="review-head">
-        <span class="review-name">${esc(r.name)}</span>
-        <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+    box.innerHTML = data.map(r => `
+      <div class="review">
+        <div class="review-head">
+          <span class="review-name">${esc(r.name)}</span>
+          <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+        </div>
+        <div class="review-text">${esc(r.text)}</div>
+        <div class="review-date">${formatDate(r.created_at)}</div>
       </div>
-      <div class="review-text">${esc(r.text)}</div>
-      <div class="review-date">${formatDate(r.created_at)}</div>
-    </div>
-  `).join('');
+    `).join('');
+  } catch (e) {
+    box.innerHTML = '<div class="empty" style="padding:20px 0;border:none">Не удалось загрузить отзывы</div>';
+  }
 }
