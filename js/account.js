@@ -51,7 +51,7 @@ async function init() {
         <p><a href="profile.html?u=${profile.slug}">Публичная страница</a> · <a href="#" id="logoutBtn" style="color:var(--danger)">Выйти</a></p>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 320px;gap:40px">
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:40px" class="account-grid">
         <div>
           <div class="section">
             <div class="section-title">Данные профиля</div>
