@@ -22,7 +22,7 @@ async function loadApps() {
     allApps = apps || [];
     renderApps();
   } catch (e) {
-    grid.innerHTML = '<div class="empty">Не удалось загрузить каталог</div>';
+    grid.innerHTML = '<div class="empty">Ошибка загрузки. Обновите страницу.</div>';
   }
 }
 
