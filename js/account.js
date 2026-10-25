@@ -1,4 +1,4 @@
-import { dbSelect, dbRpc, storageUpload, storageUrl } from './api.js';
+import { dbRpc, storageUpload, storageUrl } from './api.js';
 import { getSession, clearSession, saveSession } from './session.js';
 
 const content = document.getElementById('content');
@@ -10,7 +10,6 @@ if (!session) {
   content.innerHTML = `
     <div class="login-wrap" style="margin:80px auto;text-align:center">
       <h1>Нужен вход</h1>
-      <p style="color:var(--muted);margin-bottom:20px;font-size:14px">Войдите, чтобы управлять профилем.</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         <a href="login.html" class="btn" style="text-align:center">Войти</a>
         <a href="signup.html" class="btn btn-ghost" style="text-align:center">Регистрация</a>
@@ -18,8 +17,7 @@ if (!session) {
     </div>`;
 } else init();
 
-// ---- рендер формы ----
-function renderProfileForm(p, apps, fromCache) {
+function renderProfileForm(p, apps) {
   const currentIcon = p.icon_url || '';
   content.innerHTML = `
     <div class="page-header">
@@ -42,11 +40,11 @@ function renderProfileForm(p, apps, fromCache) {
               <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
                 <div id="iconPreview">
                   ${currentIcon
-                    ? `<img src="${esc(currentIcon)}" width="80" height="80" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--orange)">`
+                    ? `<img src="${esc(currentIcon)}" width="80" height="80" style="border-radius:50%;object-fit:cover;border:2px solid var(--orange)">`
                     : `<div style="width:80px;height:80px;border-radius:50%;background:var(--surface-2);border:2px dashed var(--border-2);display:flex;align-items:center;justify-content:center;font-size:32px">🎃</div>`}
                 </div>
                 <div style="flex:1;min-width:200px">
-                  <div class="file-input-wrap" id="iconWrap">
+                  <div class="file-input-wrap">
                     <span class="file-input-icon">⭐</span>
                     <div class="file-input-text"><strong>Нажмите или перетащите</strong><br>PNG, JPG, WebP до 2 МБ</div>
                     <input type="file" accept="image/*" id="iconInput">
@@ -82,45 +80,31 @@ function renderProfileForm(p, apps, fromCache) {
         </div>
       </div>
       <div>
-        <div class="section-title">Мои приложения ${fromCache ? '· кэш' : ''}</div>
-        <div id="appsBox">${renderAppsList(apps)}</div>
+        <div class="section-title">Мои приложения · ${(apps || []).length}</div>
+        ${(apps && apps.length) ? apps.map(a => `
+          <div class="admin-item" style="margin-bottom:8px">
+            <img src="${esc(a.icon_url || '')}" alt="" width="42" height="42" loading="lazy">
+            <div class="grow"><h4>${esc(a.name)}</h4>
+              <small>${formatSize(a.size_bytes)} · ${a.downloads} ↓</small>
+            </div>
+          </div>`).join('') : '<div class="empty" style="padding:20px;font-size:13px">Приложений пока нет</div>'}
       </div>
     </div>`;
-
-  bindProfileForm(p);
-  bindAppsBox();
+  bind();
 }
 
-function renderAppsList(apps) {
-  if (!apps || !apps.length) return '<div class="empty" style="padding:20px;font-size:13px">Приложений пока нет</div>';
-  return apps.map(a => `
-    <div class="admin-item" style="margin-bottom:8px">
-      <img src="${esc(a.icon_url || '')}" alt="" width="42" height="42" loading="lazy" decoding="async">
-      <div class="grow"><h4>${esc(a.name)}</h4>
-        <small>${formatSize(a.size_bytes)} · ${a.downloads} ↓ ${a.status === 'hidden' ? '· скрыто' : ''}</small>
-      </div>
-      ${a.status === 'published' ? `<a href="app.html?slug=${encodeURIComponent(a.slug || a.id)}" class="btn btn-ghost btn-sm">Открыть</a>` : ''}
-    </div>`).join('');
-}
-
-function bindAppsBox() {
-  const box = document.getElementById('appsBox');
-  if (!box) return;
-}
-
-function bindProfileForm(p) {
+function bind() {
   document.getElementById('logoutBtn').addEventListener('click', e => {
     e.preventDefault();
     clearSession();
-    try { localStorage.removeItem('cache_profile'); localStorage.removeItem('cache_my_apps'); } catch {}
     location.href = 'index.html';
   });
 
   const iconInput = document.getElementById('iconInput');
-  const iconName = document.getElementById('iconName');
   const iconHint = document.getElementById('iconHint');
   const iconPreview = document.getElementById('iconPreview');
   const iconUrlHidden = document.getElementById('iconUrlHidden');
+  const iconName = document.getElementById('iconName');
 
   iconInput?.addEventListener('change', async () => {
     const file = iconInput.files[0];
@@ -135,8 +119,8 @@ function bindProfileForm(p) {
       await storageUpload('icons', path, file);
       const url = storageUrl('icons', path);
       iconUrlHidden.value = url;
-      iconHint.textContent = '✅ Загружено (не забудьте сохранить)'; iconHint.style.color = 'var(--success)';
-      iconPreview.innerHTML = `<img src="${url}" width="80" height="80" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--orange)">`;
+      iconHint.textContent = '✅ Загружено'; iconHint.style.color = 'var(--success)';
+      iconPreview.innerHTML = `<img src="${url}" width="80" height="80" style="border-radius:50%;object-fit:cover;border:2px solid var(--orange)">`;
     } catch (err) { iconHint.textContent = 'Ошибка: ' + err.message; iconHint.style.color = 'var(--danger)'; }
   });
 
@@ -146,7 +130,7 @@ function bindProfileForm(p) {
     const s = document.getElementById('saveStatus');
     s.textContent = 'Сохранение…'; s.style.color = 'var(--muted)';
     try {
-      const result = await dbRpc('update_own_profile', {
+      const r = await dbRpc('update_own_profile', {
         p_account_id: session.account_id,
         p_display_name: fd.get('display_name'),
         p_slug: (fd.get('slug') || '').toLowerCase(),
@@ -154,9 +138,8 @@ function bindProfileForm(p) {
         p_bio: fd.get('bio') || '',
         p_links: fd.get('links') || '',
       });
-      if (result && result.error) { s.textContent = result.error; s.style.color = 'var(--danger)'; return; }
+      if (r && r.error) { s.textContent = r.error; s.style.color = 'var(--danger)'; return; }
       saveSession({ ...session, display_name: fd.get('display_name'), slug: (fd.get('slug') || '').toLowerCase() });
-      try { localStorage.removeItem('cache_profile'); } catch {}
       s.textContent = 'Сохранено!'; s.style.color = 'var(--success)';
     } catch (err) { s.textContent = 'Ошибка: ' + err.message; s.style.color = 'var(--danger)'; }
   });
@@ -168,63 +151,47 @@ function bindProfileForm(p) {
     if (fd.get('new1') !== fd.get('new2')) { s.textContent = 'Пароли не совпадают'; s.style.color = 'var(--danger)'; return; }
     s.textContent = 'Смена…'; s.style.color = 'var(--muted)';
     try {
-      const result = await dbRpc('change_password', {
+      const r = await dbRpc('change_password', {
         p_account_id: session.account_id,
         p_current_password: fd.get('current'),
         p_new_password: fd.get('new1'),
       });
-      if (result && result.error) { s.textContent = result.error; s.style.color = 'var(--danger)'; return; }
+      if (r && r.error) { s.textContent = r.error; s.style.color = 'var(--danger)'; return; }
       s.textContent = 'Пароль изменён!'; s.style.color = 'var(--success)';
       e.target.reset();
     } catch (err) { s.textContent = 'Ошибка: ' + err.message; s.style.color = 'var(--danger)'; }
   });
 }
 
-// ---- основной поток ----
-async function init() {
-  // 1. Мгновенно показываем из кэша (если есть)
-  const cachedProfile = (() => {
-    try {
-      const raw = localStorage.getItem('cache_profile');
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-  })();
-  const cachedApps = (() => {
-    try {
-      const raw = localStorage.getItem('cache_my_apps');
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-  })();
-
-  if (cachedProfile) {
-    renderProfileForm(cachedProfile, cachedApps || [], true);
-  } else {
-    // заглушка, чтобы не было пустого экрана
-    content.innerHTML = `
-      <div class="page-header"><h1>Мой профиль</h1></div>
-      <div class="empty" style="margin-top:20px">Загрузка профиля…</div>`;
-  }
-
-  // 2. В фоне грузим свежие данные и обновляем UI
+function getCachedProfile() {
   try {
-    const [profiles, apps] = await Promise.all([
-      dbSelect('profiles', 'select=*&id=eq.' + session.profile_id + '&limit=1'),
-      dbSelect('apps', 'select=id,name,slug,icon_url,size_bytes,downloads,version,status&author_profile_id=eq.' + session.profile_id + '&order=created_at.desc'),
-    ]);
-    if (!profiles || !profiles.length) {
-      content.innerHTML = '<div class="empty">Профиль не найден</div>';
-      return;
-    }
-    const p = profiles[0];
-    try {
-      localStorage.setItem('cache_profile', JSON.stringify(p));
-      localStorage.setItem('cache_my_apps', JSON.stringify(apps || []));
-    } catch {}
-    renderProfileForm(p, apps || [], false);
-  } catch (e) {
-    if (!cachedProfile) {
-      content.innerHTML = '<div class="empty">Не удалось загрузить профиль: ' + esc(e.message) + '</div>';
-    }
-    // если кэш есть — оставляем форму с кэшем, не ломаем UX
+    const raw = localStorage.getItem('cache_profile');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function getCachedApps() {
+  try {
+    const raw = localStorage.getItem('cache_my_apps');
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function init() {
+  // Мгновенно из кэша или из session
+  const cached = getCachedProfile();
+  if (cached) {
+    renderProfileForm(cached, getCachedApps());
+    return;
   }
+
+  // Если кэша нет — показываем форму из данных session (то, что уже знаем)
+  renderProfileForm({
+    display_name: session.display_name || 'Пользователь',
+    slug: session.slug || '',
+    icon_url: '',
+    bio: '',
+    links: '',
+  }, []);
+
+  // Кэш обновится после следующего сохранения или входа
 }
