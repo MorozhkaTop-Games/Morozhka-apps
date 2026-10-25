@@ -5,13 +5,16 @@ const filtersBox = document.getElementById('filters');
 let currentCat = null;
 let allApps = [];
 
+const CACHE_KEY = 'cache_apps_v3';  // ← новая версия (сброс старого кэша)
+const CACHE_CATS_KEY = 'cache_cats';
+
 const formatSize = b => !b ? '—' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function starsHtml(avg, count) {
-  if (!count) return '<span style="color:var(--muted-2);font-size:12px">нет оценок</span>';
+  if (!count) return '';
   const full = Math.round(avg);
-  return `<span class="review-stars">${'★'.repeat(full)}${'☆'.repeat(5 - full)}</span> <span style="color:var(--muted);font-size:11px">${avg.toFixed(1)} (${count})</span>`;
+  return `<span class="review-stars" style="font-size:11px">${'★'.repeat(full)}${'☆'.repeat(5 - full)}</span> <span style="color:var(--muted);font-size:11px">${avg.toFixed(1)}</span>`;
 }
 
 async function loadApps() {
@@ -19,7 +22,7 @@ async function loadApps() {
 
   let cached = null;
   try {
-    const raw = localStorage.getItem('cache_apps');
+    const raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
       const obj = JSON.parse(raw);
       if (obj && obj.apps) cached = obj.apps;
@@ -41,13 +44,12 @@ async function loadApps() {
     if (apps && apps.length) {
       allApps = apps;
       try {
-        localStorage.setItem('cache_apps', JSON.stringify({ t: Date.now(), apps }));
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), apps }));
         apps.forEach(a => {
           if (a.slug) localStorage.setItem('app_' + a.slug, JSON.stringify(a));
         });
       } catch {}
       renderApps();
-      // рейтинг — параллельно, не блокирует
       loadRatings();
     }
   } catch (e) {
@@ -57,17 +59,11 @@ async function loadApps() {
 }
 
 async function loadRatings() {
-  // Для каждого приложения — get_app_rating, параллельно
   const promises = allApps.map(async (a) => {
     try {
       const r = await dbRpc('get_app_rating', { p_app_id: a.id });
-      if (r && r.count > 0) {
-        a.rating_avg = r.avg;
-        a.rating_count = r.count;
-      } else {
-        a.rating_avg = 0;
-        a.rating_count = 0;
-      }
+      a.rating_avg = (r && r.avg) || 0;
+      a.rating_count = (r && r.count) || 0;
     } catch {
       a.rating_avg = 0;
       a.rating_count = 0;
@@ -75,7 +71,7 @@ async function loadRatings() {
   });
   await Promise.all(promises);
   try {
-    localStorage.setItem('cache_apps', JSON.stringify({ t: Date.now(), apps: allApps }));
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), apps: allApps }));
     allApps.forEach(a => { if (a.slug) localStorage.setItem('app_' + a.slug, JSON.stringify(a)); });
   } catch {}
   renderApps();
@@ -110,7 +106,7 @@ function renderApps() {
 
 async function loadCategories() {
   if (!filtersBox) return;
-  const raw = localStorage.getItem('cache_cats');
+  const raw = localStorage.getItem(CACHE_CATS_KEY);
   if (raw) try {
     const cats = JSON.parse(raw);
     if (cats && cats.length) { renderCats(cats); }
@@ -118,7 +114,7 @@ async function loadCategories() {
   try {
     const cats = await dbSelect('categories', 'select=*&order=sort_order');
     if (cats && cats.length) {
-      localStorage.setItem('cache_cats', JSON.stringify(cats));
+      localStorage.setItem(CACHE_CATS_KEY, JSON.stringify(cats));
       renderCats(cats);
     }
   } catch (e) { console.warn('Категории:', e.message); }
