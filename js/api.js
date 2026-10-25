@@ -1,4 +1,5 @@
-const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
+const SUPABASE_URL = 'https://clear-boar-7169.morozhkatop-games.deno.net';
+const SUPABASE_STORAGE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
 const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
 const HEADERS = {
@@ -8,15 +9,26 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-async function req(path, options = {}, ms = 15000) {
+async function req(path, options = {}, ms = 8000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
-    return await fetch(SUPABASE_URL + path, {
+    const res = await fetch(SUPABASE_URL + path, {
       ...options,
       headers: { ...HEADERS, ...(options.headers || {}) },
       signal: ctrl.signal,
+      mode: 'cors',
+      cache: 'no-store',
     });
+    return res;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Сервер не ответил за 8 секунд. Проверьте интернет.');
+    }
+    if (err instanceof TypeError && /fetch/i.test(err.message)) {
+      throw new Error('Нет связи с сервером. Проверьте интернет или отключите VPN.');
+    }
+    throw err;
   } finally {
     clearTimeout(t);
   }
@@ -60,5 +72,5 @@ export async function storageUpload(bucket, path, file) {
 }
 
 export function storageUrl(bucket, path) {
-  return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
+  return SUPABASE_STORAGE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
 }
