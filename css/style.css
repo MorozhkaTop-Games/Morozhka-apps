@@ -425,3 +425,31 @@ body.halloween-cursor a, body.halloween-cursor button { cursor: url("data:image/
   .app-card::before { display: none; }
   html { scroll-behavior: auto; }
 }
+
+/* Фиксированные размеры иконок — не дают вёрстке скакать, пока грузится картинка */
+.app-card .icon {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  flex: 0 0 56px;
+  object-fit: cover;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.app-card .body { min-width: 0; }
+.app-card .body h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-card .author { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.app-card-skeleton { pointer-events: none; }
+.skeleton-box,
+.skeleton-line {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3, var(--surface-2)) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s infinite linear;
+  border-radius: 6px;
+}
+.skeleton-line { height: 14px; }
+.skeleton-box { width: 56px; height: 56px; border-radius: 14px; flex: 0 0 56px; }
+@keyframes skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
