@@ -1,41 +1,21 @@
 import { dbSelect } from './api.js';
-
 const grid = document.getElementById('apps');
 const filtersBox = document.getElementById('filters');
-let currentCat = null;
-let allApps = [];
+let currentCat = null, allApps = [];
 
-const formatSize = b => {
-  if (!b) return '—';
-  if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
-  return (b / 1024 / 1024).toFixed(1) + ' MB';
-};
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-}[c]));
+const formatSize = b => !b ? '—' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 async function loadApps() {
   if (!grid) return;
-
   const cached = localStorage.getItem('cache_apps');
-  if (cached) {
-    try {
-      const c = JSON.parse(cached);
-      if (Array.isArray(c) && c.length) { allApps = c; renderApps(); }
-    } catch {}
-  }
-
+  if (cached) try { const c = JSON.parse(cached); if (Array.isArray(c) && c.length) { allApps = c; renderApps(); } } catch {}
   try {
-    const apps = await dbSelect(
-      'apps',
-      'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,app_categories(category_id)&status=eq.published&order=created_at.desc'
-    );
+    const apps = await dbSelect('apps', 'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,app_categories(category_id)&status=eq.published&order=created_at.desc');
     allApps = apps || [];
     try { localStorage.setItem('cache_apps', JSON.stringify(allApps)); } catch {}
     renderApps();
-  } catch (e) {
-    if (!cached) grid.innerHTML = '<div class="empty">Не удалось загрузить. Проверьте интернет и обновите страницу.</div>';
-  }
+  } catch (e) { if (!cached) grid.innerHTML = '<div class="empty">Не удалось загрузить. Проверьте интернет и обновите.</div>'; }
 }
 
 function renderApps() {
@@ -43,7 +23,6 @@ function renderApps() {
   let apps = allApps;
   if (currentCat) apps = apps.filter(a => (a.app_categories || []).some(ac => ac.category_id === currentCat));
   if (!apps.length) { grid.innerHTML = '<div class="empty">В этом разделе пока пусто</div>'; return; }
-
   grid.innerHTML = apps.map(a => `
     <a href="app.html?slug=${encodeURIComponent(a.slug || a.id)}" class="app-card">
       <img class="icon" src="${esc(a.icon_url) || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'}" alt="" loading="lazy" decoding="async">
