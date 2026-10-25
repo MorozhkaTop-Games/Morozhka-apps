@@ -5,61 +5,42 @@ const filtersBox = document.getElementById('filters');
 let currentCat = null;
 let allApps = [];
 
-const CACHE_KEY = 'cache_apps_v3';  // ← новая версия (сброс старого кэша)
-const CACHE_CATS_KEY = 'cache_cats';
-
 const formatSize = b => !b ? '—' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-function starsHtml(avg, count) {
-  if (!count) return '';
-  const full = Math.round(avg);
-  return `<span class="review-stars" style="font-size:11px">${'★'.repeat(full)}${'☆'.repeat(5 - full)}</span> <span style="color:var(--muted);font-size:11px">${avg.toFixed(1)}</span>`;
-}
-
 async function loadApps() {
   if (!grid) return;
-
-  let cached = null;
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      if (obj && obj.apps) cached = obj.apps;
-    }
-  } catch {}
-
-  if (cached && cached.length) {
-    allApps = cached;
-    renderApps();
-  } else {
-    grid.innerHTML = '<div class="empty">Загрузка…</div>';
-  }
+  grid.innerHTML = '<div class="empty">Загрузка…</div>';
 
   try {
     const apps = await dbSelect(
       'apps',
-      'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,description,screenshots,install_instructions,has_ads,has_iap,age_rating,status,author_profile:profiles!author_profile_id(slug),app_categories(category_id)&status=eq.published&order=created_at.desc'
+      'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,description,screenshots,install_instructions,has_ads,has_iap,age_rating,status,app_categories(category_id)&status=eq.published&order=created_at.desc'
     );
-    if (apps && apps.length) {
-      allApps = apps;
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), apps }));
-        apps.forEach(a => {
-          if (a.slug) localStorage.setItem('app_' + a.slug, JSON.stringify(a));
+    if (!apps || !apps.length) { grid.innerHTML = '<div class="empty">Пока пусто</div>'; return; }
+    allApps = apps;
+
+    try {
+      const ids = [...new Set(apps.map(a => a.author_profile_id).filter(Boolean))];
+      if (ids.length) {
+        const profiles = await dbSelect('profiles', 'select=id,slug&id=in.(' + ids.join(',') + ')');
+        const map = {};
+        (profiles || []).forEach(p => { map[p.id] = p.slug; });
+        allApps.forEach(a => {
+          if (a.author_profile_id && map[a.author_profile_id]) a.author_slug = map[a.author_profile_id];
         });
-      } catch {}
-      renderApps();
-      loadRatings();
-    }
+      }
+    } catch {}
+
+    renderApps();
+    loadRatings();
   } catch (e) {
-    console.warn('Каталог:', e.message);
-    if (!cached) grid.innerHTML = '<div class="empty">Не удалось загрузить. Проверьте интернет.</div>';
+    grid.innerHTML = '<div class="empty">Ошибка: ' + esc(e.message) + '</div>';
   }
 }
 
 async function loadRatings() {
-  const promises = allApps.map(async (a) => {
+  await Promise.all(allApps.map(async (a) => {
     try {
       const r = await dbRpc('get_app_rating', { p_app_id: a.id });
       a.rating_avg = (r && r.avg) || 0;
@@ -68,12 +49,7 @@ async function loadRatings() {
       a.rating_avg = 0;
       a.rating_count = 0;
     }
-  });
-  await Promise.all(promises);
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), apps: allApps }));
-    allApps.forEach(a => { if (a.slug) localStorage.setItem('app_' + a.slug, JSON.stringify(a)); });
-  } catch {}
+  }));
   renderApps();
 }
 
@@ -83,8 +59,8 @@ function renderApps() {
   if (currentCat) apps = apps.filter(a => (a.app_categories || []).some(ac => ac.category_id === currentCat));
   if (!apps.length) { grid.innerHTML = '<div class="empty">В этом разделе пока пусто</div>'; return; }
   grid.innerHTML = apps.map(a => {
-    const author = a.author_profile && a.author_profile.slug
-      ? `<a href="profile.html?u=${encodeURIComponent(a.author_profile.slug)}">${esc(a.author)}</a>`
+    const author = a.author_slug
+      ? `<a href="profile.html?u=${encodeURIComponent(a.author_slug)}">${esc(a.author)}</a>`
       : esc(a.author);
     return `
     <a href="app.html?slug=${encodeURIComponent(a.slug || a.id)}" class="app-card">
@@ -96,7 +72,7 @@ function renderApps() {
           ${a.version ? `<span>v${esc(a.version)}</span>` : ''}
           <span>${formatSize(a.size_bytes)}</span>
           <span>${a.downloads} ↓</span>
-          ${a.rating_count > 0 ? `<span>${starsHtml(a.rating_avg || 0, a.rating_count)}</span>` : ''}
+          ${a.rating_count > 0 ? `<span class="review-stars" style="font-size:11px">${'★'.repeat(Math.round(a.rating_avg))}${'☆'.repeat(5 - Math.round(a.rating_avg))}</span> <span style="color:var(--muted);font-size:11px">${a.rating_avg.toFixed(1)}</span>` : ''}
           ${!a.download_url ? '<span class="soon">Скоро</span>' : ''}
         </div>
       </div>
@@ -106,18 +82,10 @@ function renderApps() {
 
 async function loadCategories() {
   if (!filtersBox) return;
-  const raw = localStorage.getItem(CACHE_CATS_KEY);
-  if (raw) try {
-    const cats = JSON.parse(raw);
-    if (cats && cats.length) { renderCats(cats); }
-  } catch {}
   try {
     const cats = await dbSelect('categories', 'select=*&order=sort_order');
-    if (cats && cats.length) {
-      localStorage.setItem(CACHE_CATS_KEY, JSON.stringify(cats));
-      renderCats(cats);
-    }
-  } catch (e) { console.warn('Категории:', e.message); }
+    renderCats(cats || []);
+  } catch { renderCats([]); }
 }
 
 function renderCats(cats) {
