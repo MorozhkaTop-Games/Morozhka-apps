@@ -59,6 +59,7 @@
   <footer><div class="container">© 2026 MOROZHKA APPS</div></footer>
 
   <script type="module">
+    // ❗ ключей здесь НЕТ. Всё через api.js
     import { dbRpc } from './js/api.js';
     import { saveSession } from './js/session.js';
 
@@ -95,9 +96,8 @@
           return;
         }
         if (!data.account_id || !data.profile_id) {
-          status.textContent = 'Сервер вернул неполный ответ — проверь register_user';
+          status.textContent = 'Сервер вернул неполный ответ';
           status.style.color = 'var(--danger)';
-          if (window.turnstile) window.turnstile.reset();
           return;
         }
 
