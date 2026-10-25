@@ -2,9 +2,9 @@ const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
 const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzY2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
 const HEADERS = {
-  'apikey': KEY,
-  'Authorization': 'Bearer ' + KEY,
-  'Accept': 'application/json',
+  apikey: KEY,
+  Authorization: 'Bearer ' + KEY,
+  Accept: 'application/json',
   'Content-Type': 'application/json',
 };
 
@@ -34,7 +34,7 @@ export async function dbSelect(table, query = '') {
 export async function dbInsert(table, row) {
   const res = await req('/rest/v1/' + table, {
     method: 'POST',
-    headers: { 'Prefer': 'return=representation' },
+    headers: { Prefer: 'return=representation' },
     body: JSON.stringify(row),
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -44,7 +44,7 @@ export async function dbInsert(table, row) {
 export async function dbUpdate(table, filter, patch) {
   const res = await req('/rest/v1/' + table + '?' + filter, {
     method: 'PATCH',
-    headers: { 'Prefer': 'return=minimal' },
+    headers: { Prefer: 'return=minimal' },
     body: JSON.stringify(patch),
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -59,7 +59,9 @@ export async function dbRpc(fn, args = {}) {
   let parsed = null;
   try { parsed = text ? JSON.parse(text) : null; } catch { parsed = { error: text }; }
   if (!res.ok) {
-    const msg = (parsed && (parsed.error || parsed.message || parsed.hint)) || ('HTTP ' + res.status);
+    const msg =
+      (parsed && (parsed.error || parsed.message || parsed.hint)) ||
+      ('HTTP ' + res.status);
     throw new Error(msg);
   }
   return parsed;
@@ -81,5 +83,3 @@ export async function storageUpload(bucket, path, file) {
 export function storageUrl(bucket, path) {
   return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
 }
-
-export { SUPABASE_URL };
