@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Вход — Morozhka Apps</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
   <header>
@@ -64,8 +64,13 @@
           p_password: fd.get('password'),
         });
 
-        if (data.error) {
-          status.textContent = data.error;
+        if (!data || data.error) {
+          status.textContent = (data && data.error) || 'Ошибка входа';
+          status.style.color = 'var(--danger)';
+          return;
+        }
+        if (!data.account_id || !data.profile_id) {
+          status.textContent = 'Сервер вернул неполный ответ — проверь функцию login_user';
           status.style.color = 'var(--danger)';
           return;
         }
