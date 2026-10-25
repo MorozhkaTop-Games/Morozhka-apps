@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://tksbqddskldnaafevmnl.supabase.co';
-const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzE2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrc2JxZGRza2xkbmFhZmV2bW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzcxNjEsImV4cCI6MjEwODM1MzY2MX0.7wiyoe1Jdx6Xvq6oMc9vplLcuFRUuyB28CmqcOF7Vbc';
 
 const HEADERS = {
   'apikey': KEY,
@@ -8,7 +8,7 @@ const HEADERS = {
   'Content-Type': 'application/json',
 };
 
-async function req(path, options = {}, ms = 5000) { // ЖЕСТКО 5 СЕКУНД
+async function req(path, options = {}, ms = 6000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
@@ -25,7 +25,10 @@ async function req(path, options = {}, ms = 5000) { // ЖЕСТКО 5 СЕКУН
 export async function dbSelect(table, query = '') {
   const path = '/rest/v1/' + table + (query ? '?' + query : '');
   const res = await req(path);
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
+  }
   return await res.json();
 }
 
@@ -53,7 +56,10 @@ export async function dbRpc(fn, args = {}) {
     method: 'POST',
     body: JSON.stringify(args),
   });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error('HTTP ' + res.status + ': ' + t.slice(0, 200));
+  }
   return await res.json();
 }
 
