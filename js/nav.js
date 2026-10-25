@@ -1,15 +1,10 @@
 import { getSession } from './session.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const link = document.querySelector('nav a[href="account.html"]');
+function init() {
+  const link = document.querySelector('nav a[href="account.html"], nav a[href="login.html"]');
   if (link) {
-    if (getSession()) {
-      link.textContent = 'Профиль';
-      link.href = 'account.html';
-    } else {
-      link.textContent = 'Войти';
-      link.href = 'login.html';
-    }
+    if (getSession()) { link.textContent = 'Профиль'; link.href = 'account.html'; }
+    else { link.textContent = 'Войти'; link.href = 'login.html'; }
   }
 
   const backBtn = document.createElement('button');
@@ -18,11 +13,17 @@ document.addEventListener('DOMContentLoaded', () => {
   backBtn.setAttribute('aria-label', 'Наверх');
   document.body.appendChild(backBtn);
 
+  let raf = null;
   window.addEventListener('scroll', () => {
-    backBtn.classList.toggle('visible', window.scrollY > 400);
-  });
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      backBtn.classList.toggle('visible', window.scrollY > 400);
+      raf = null;
+    });
+  }, { passive: true });
 
-  backBtn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-});
+  backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
