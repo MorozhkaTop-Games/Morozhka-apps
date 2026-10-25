@@ -20,7 +20,7 @@ function readApp(slug) {
 }
 
 function starsHtml(avg, count) {
-  if (!count) return '<span style="color:var(--muted-2);font-size:13px">нет оценок</span>';
+  if (!count) return '<span style="color:var(--muted-2);font-size:13px">Пока нет оценок</span>';
   const full = Math.round(avg);
   return `<span class="review-stars" style="font-size:16px">${'★'.repeat(full)}${'☆'.repeat(5 - full)}</span> <span style="color:var(--muted);font-size:13px">${avg.toFixed(1)} (${count} ${count === 1 ? 'отзыв' : count < 5 ? 'отзыва' : 'отзывов'})</span>`;
 }
@@ -88,7 +88,6 @@ function renderApp(app) {
   const btn = document.getElementById('downloadBtn');
   if (btn) btn.addEventListener('click', () => { window.location.href = app.download_url; });
 
-  // Рейтинг — грузим сразу, обновляем блок
   dbRpc('get_app_rating', { p_app_id: app.id })
     .then(r => {
       const box = document.getElementById('ratingBox');
@@ -96,9 +95,7 @@ function renderApp(app) {
       if (r && r.count > 0) {
         box.innerHTML = starsHtml(r.avg, r.count);
         app.rating_avg = r.avg; app.rating_count = r.count;
-        try {
-          localStorage.setItem('app_' + (app.slug || app.id), JSON.stringify(app));
-        } catch {}
+        try { localStorage.setItem('app_' + (app.slug || app.id), JSON.stringify(app)); } catch {}
       } else {
         box.innerHTML = '<span style="color:var(--muted-2);font-size:13px">Пока нет оценок</span>';
       }
@@ -165,13 +162,12 @@ async function init() {
     const app = readApp(appSlug);
     if (app) {
       renderApp(app);
-      // в фоне подтягиваем свежие данные (если каталог не так давно обновлялся — пропустим)
       dbSelect('apps', 'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,description,screenshots,install_instructions,has_ads,has_iap,age_rating,status,author_profile:profiles!author_profile_id(slug)&slug=eq.' + encodeURIComponent(appSlug) + '&status=eq.published&limit=1')
         .then(rows => {
           if (rows && rows.length) {
             const fresh = rows[0];
             try { localStorage.setItem('app_' + appSlug, JSON.stringify(fresh)); } catch {}
-            if (JSON.stringify(fresh) !== JSON.stringify(app)) renderApp(fresh);
+            renderApp(fresh);
           }
         })
         .catch(() => {});
