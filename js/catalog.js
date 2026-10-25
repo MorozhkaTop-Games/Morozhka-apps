@@ -2,14 +2,6 @@ import { dbSelect } from './api.js';
 
 const grid = document.getElementById('apps');
 const filtersBox = document.getElementById('filters');
-
-if (!grid) {
-  document.body.innerHTML = '<div style="color:red;padding:20px">ОШИБКА: #apps не найден</div>';
-  throw new Error('no #apps');
-}
-
-grid.innerHTML = '<div class="empty">Загрузка…</div>';
-
 let currentCat = null;
 let allApps = [];
 
@@ -25,32 +17,19 @@ function esc(s) {
 }
 
 async function loadApps() {
-  const cached = localStorage.getItem('cache_apps');
-  if (cached) {
-    try {
-      const apps = JSON.parse(cached);
-      if (apps && apps.length) { allApps = apps; renderApps(); }
-    } catch (e) {}
-  }
   try {
-    const apps = await dbSelect('apps',
-      'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,app_categories(category_id)&status=eq.published&order=created_at.desc');
+    const apps = await dbSelect('apps', 'select=id,name,slug,author,author_profile_id,icon_url,size_bytes,version,downloads,created_at,download_url,app_categories(category_id)&status=eq.published&order=created_at.desc');
     allApps = apps || [];
-    localStorage.setItem('cache_apps', JSON.stringify(allApps));
     renderApps();
   } catch (e) {
-    if (!cached) {
-      grid.innerHTML = '<div class="empty">Не удалось загрузить. Проверьте интернет и обновите страницу.</div>';
-    }
+    grid.innerHTML = '<div class="empty">Не удалось загрузить каталог</div>';
   }
 }
 
 function renderApps() {
   let apps = allApps;
   if (currentCat) {
-    apps = apps.filter(app =>
-      (app.app_categories || []).some(ac => ac.category_id === currentCat)
-    );
+    apps = apps.filter(app => (app.app_categories || []).some(ac => ac.category_id === currentCat));
   }
   if (!apps.length) {
     grid.innerHTML = '<div class="empty">В этом разделе пока пусто</div>';
@@ -86,9 +65,7 @@ async function loadCategories() {
         renderApps();
       });
     });
-  } catch (e) {
-    console.warn('Категории:', e.message);
-  }
+  } catch (e) {}
 }
 
 loadApps();
