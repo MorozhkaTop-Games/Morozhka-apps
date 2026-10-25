@@ -1,20 +1,17 @@
-import { dbSelect, dbUpdate, dbRpc, storageUpload, storageUrl } from './api.js';
-import { getSession, clearSession } from './session.js';
+import { dbSelect, dbRpc, storageUpload, storageUrl } from './api.js';
+import { getSession, clearSession, saveSession } from './session.js';
 
 const content = document.getElementById('content');
 const session = getSession();
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
-
-function formatSize(bytes) {
-  if (!bytes) return '—';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
-}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[c]));
+const formatSize = b => {
+  if (!b) return '—';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
+  return (b / 1024 / 1024).toFixed(1) + ' MB';
+};
 
 if (!session) {
   content.innerHTML = `
@@ -25,8 +22,7 @@ if (!session) {
         <a href="login.html" class="btn" style="text-align:center">Войти</a>
         <a href="signup.html" class="btn btn-ghost" style="text-align:center">Регистрация</a>
       </div>
-    </div>
-  `;
+    </div>`;
 } else {
   init();
 }
@@ -39,18 +35,17 @@ async function init() {
       return;
     }
     const profile = rows[0];
-
-    const apps = await dbSelect('apps',
-      'select=id,name,slug,icon_url,size_bytes,downloads,version,status&author_profile_id=eq.' + profile.id + '&order=created_at.desc');
-
+    const apps = await dbSelect(
+      'apps',
+      'select=id,name,slug,icon_url,size_bytes,downloads,version,status&author_profile_id=eq.' + profile.id + '&order=created_at.desc'
+    );
     const currentIcon = profile.icon_url || '';
 
     content.innerHTML = `
       <div class="page-header">
         <h1>Мой профиль</h1>
-        <p><a href="profile.html?u=${profile.slug}">Публичная страница</a> · <a href="#" id="logoutBtn" style="color:var(--danger)">Выйти</a></p>
+        <p><a href="profile.html?u=${esc(profile.slug)}">Публичная страница</a> · <a href="#" id="logoutBtn" style="color:var(--danger)">Выйти</a></p>
       </div>
-
       <div style="display:grid;grid-template-columns:1fr 320px;gap:40px" class="account-grid">
         <div>
           <div class="section">
@@ -66,7 +61,6 @@ async function init() {
                   <input type="text" name="slug" value="${esc(profile.slug)}" required pattern="[a-z0-9-]{2,30}">
                 </div>
               </div>
-
               <div class="form-group">
                 <label>Иконка профиля</label>
                 <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
@@ -87,22 +81,18 @@ async function init() {
                 <div class="hint" id="iconHint">${currentIcon ? 'Иконка загружена' : 'Иконка не загружена'}</div>
               </div>
               <input type="hidden" id="iconUrlHidden" value="${esc(currentIcon)}">
-
               <div class="form-group">
                 <label>О себе</label>
                 <textarea name="bio" maxlength="300">${esc(profile.bio || '')}</textarea>
               </div>
-
               <div class="form-group" style="margin-bottom:32px">
                 <label>Ссылки (одна на строку)</label>
                 <textarea name="links" rows="4">${esc(profile.links || '')}</textarea>
               </div>
-
               <button type="submit" class="btn">Сохранить изменения</button>
               <p id="saveStatus" style="margin-top:10px;font-size:13px"></p>
             </form>
           </div>
-
           <div class="section" style="margin-top:48px">
             <div class="section-title">Смена пароля</div>
             <form id="passwordForm">
@@ -125,24 +115,23 @@ async function init() {
             </form>
           </div>
         </div>
-
         <div>
-          <div class="section-title">Мои приложения · ${apps?.length || 0}</div>
+          <div class="section-title">Мои приложения · ${(apps || []).length}</div>
           ${(apps && apps.length) ? apps.map(a => `
             <div class="admin-item" style="margin-bottom:8px">
-              <img src="${esc(a.icon_url || '')}" alt="">
+              <img src="${esc(a.icon_url || '')}" alt="" loading="lazy" decoding="async">
               <div class="grow">
                 <h4>${esc(a.name)}</h4>
                 <small>${formatSize(a.size_bytes)} · ${a.downloads} ↓ ${a.status === 'hidden' ? '· скрыто' : ''}</small>
               </div>
-              ${a.status === 'published' ? `<a href="app.html?slug=${esc(a.slug || a.id)}" class="btn btn-ghost btn-sm" target="_blank">Открыть</a>` : ''}
-            </div>
-          `).join('') : '<div class="empty" style="padding:20px;font-size:13px">Приложений пока нет</div>'}
+              ${a.status === 'published'
+                ? `<a href="app.html?slug=${encodeURIComponent(a.slug || a.id)}" class="btn btn-ghost btn-sm" target="_blank">Открыть</a>`
+                : ''}
+            </div>`).join('') : '<div class="empty" style="padding:20px;font-size:13px">Приложений пока нет</div>'}
         </div>
-      </div>
-    `;
+      </div>`;
 
-    document.getElementById('logoutBtn').addEventListener('click', (e) => {
+    document.getElementById('logoutBtn').addEventListener('click', e => {
       e.preventDefault();
       clearSession();
       location.href = 'index.html';
@@ -167,28 +156,26 @@ async function init() {
         iconHint.style.color = 'var(--danger)';
         return;
       }
-
       iconName.textContent = file.name;
       iconHint.textContent = 'Загрузка…';
       iconHint.style.color = 'var(--muted)';
 
       const ext = file.name.split('.').pop();
       const path = `user-${session.account_id}/icon-${Date.now()}.${ext}`;
-
       try {
         await storageUpload('icons', path, file);
-        const publicUrl = storageUrl('icons', path);
-        iconUrlHidden.value = publicUrl;
+        const url = storageUrl('icons', path);
+        iconUrlHidden.value = url;
         iconHint.textContent = '✅ Загружено (не забудьте сохранить)';
         iconHint.style.color = 'var(--success)';
-        iconPreview.innerHTML = `<img src="${publicUrl}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--orange)">`;
+        iconPreview.innerHTML = `<img src="${url}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--orange)">`;
       } catch (err) {
         iconHint.textContent = 'Ошибка: ' + err.message;
         iconHint.style.color = 'var(--danger)';
       }
     });
 
-    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    document.getElementById('profileForm').addEventListener('submit', async e => {
       e.preventDefault();
       const fd = new FormData(e.target);
       const statusEl = document.getElementById('saveStatus');
@@ -199,21 +186,21 @@ async function init() {
         const result = await dbRpc('update_own_profile', {
           p_account_id: session.account_id,
           p_display_name: fd.get('display_name'),
-          p_slug: fd.get('slug'),
+          p_slug: (fd.get('slug') || '').toLowerCase(),
           p_icon_url: iconUrlHidden.value || '',
           p_bio: fd.get('bio') || '',
           p_links: fd.get('links') || '',
         });
-
-        if (result.error) {
+        if (result && result.error) {
           statusEl.textContent = result.error;
           statusEl.style.color = 'var(--danger)';
           return;
         }
-
-        const newSession = { ...session, display_name: fd.get('display_name'), slug: fd.get('slug').toLowerCase() };
-        localStorage.setItem('morozhka_session', JSON.stringify(newSession));
-
+        saveSession({
+          ...session,
+          display_name: fd.get('display_name'),
+          slug: (fd.get('slug') || '').toLowerCase(),
+        });
         statusEl.textContent = 'Сохранено!';
         statusEl.style.color = 'var(--success)';
       } catch (err) {
@@ -222,17 +209,15 @@ async function init() {
       }
     });
 
-    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+    document.getElementById('passwordForm').addEventListener('submit', async e => {
       e.preventDefault();
       const fd = new FormData(e.target);
       const statusEl = document.getElementById('passStatus');
-
       if (fd.get('new1') !== fd.get('new2')) {
         statusEl.textContent = 'Новые пароли не совпадают';
         statusEl.style.color = 'var(--danger)';
         return;
       }
-
       statusEl.textContent = 'Смена…';
       statusEl.style.color = 'var(--muted)';
 
@@ -242,13 +227,11 @@ async function init() {
           p_current_password: fd.get('current'),
           p_new_password: fd.get('new1'),
         });
-
-        if (result.error) {
+        if (result && result.error) {
           statusEl.textContent = result.error;
           statusEl.style.color = 'var(--danger)';
           return;
         }
-
         statusEl.textContent = 'Пароль изменён!';
         statusEl.style.color = 'var(--success)';
         e.target.reset();
